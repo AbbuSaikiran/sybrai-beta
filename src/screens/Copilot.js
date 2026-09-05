@@ -8,6 +8,14 @@ import { userProfile } from '../data/mockData.js';
 import { showToast } from '../utils/toast.js';
 import { chatWithAi, getAiConfig, saveAiConfig, testAiConnection } from '../utils/aiService.js';
 import { startLiveTranscription, stopLiveTranscription, isCurrentlyTranscribing } from '../utils/audioService.js';
+import {
+  showMobileDeviceControlModal,
+  takeControlOfDevice,
+  getDeviceControlState,
+  optimizeMemoryAndGarbageCollect,
+  toggleDeviceLockdown,
+  dispatchMobileHapticAlert
+} from '../utils/mobileDeviceControl.js';
 
 // Pre-packaged rich diagnostic scenarios for quick access and recent chats
 const PRESET_SCENARIOS = {
@@ -99,21 +107,32 @@ const PRESET_SCENARIOS = {
     userText: 'Getting database locked / Room SQLite constraint exception.',
     aiText: 'I analyzed your Room / SQLite database interactions. Multiple threads are trying to write concurrently on a single database connection without a transaction lock.',
     issueData: {
-      type: 'SQLiteDatabaseLockedException',
+      type: 'SQLite Database Locked',
       badgeClass: 'danger',
-      log: `android.database.sqlite.SQLiteDatabaseLockedException: database is locked (code 5)\n  at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)\n  at androidx.room.RoomDatabase.beginTransaction(RoomDatabase.java:410)`
+      log: `android.database.sqlite.SQLiteDatabaseLockedException: database is locked (code 5)\n  at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)\n  at android.database.sqlite.SQLiteSession.execute(SQLiteSession.java:835)`
     },
     fixData: {
       isApplied: false,
       safeBadge: 'Safe Fix',
-      file: 'AppDatabase.kt',
-      beforeCode: `1  fun insertLogs(logs: List<LogItem>) {\n2    logs.forEach { dao.insert(it) }\n3  }`,
-      afterCode: `1  suspend fun insertLogs(logs: List<LogItem>) = withContext(Dispatchers.IO) {\n2    database.withTransaction {\n3      dao.insertAll(logs)\n4    }\n5  }`
+      file: 'AppDatabase.java',
+      beforeCode: `1  db.runInTransaction(() -> {\n2    // Unbounded concurrent writes\n3    userDao.insert(user);\n4  });`,
+      afterCode: `1  // Use synchronized mutex or write-ahead logging (WAL)\n2  Room.databaseBuilder(context, AppDatabase.class, "app.db")\n3      .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)\n4      .build();`
     },
     followUps: [
-      'Enable WAL mode',
-      'Add migration strategy',
-      'Optimize query indices'
+      'Enable Write-Ahead Logging (WAL)',
+      'Inspect thread pool sizing',
+      'Optimize database queries'
+    ]
+  },
+  'device-control': {
+    userText: 'Take autonomous control of my mobile device and secure runtime.',
+    aiText: 'I have engaged the SYBRAI Autonomous Mobile Sentinel on your device. Live telemetry sensors (Battery, Heap Memory, Network RTT, and Hardware concurrency) are now under continuous active patrol.',
+    isDeviceControl: true,
+    followUps: [
+      'Open Cyber HUD Matrix',
+      'Engage High-Security Lockdown',
+      'Flush Heap RAM',
+      'Test Mobile Haptics'
     ]
   }
 };
@@ -299,6 +318,10 @@ export function renderCopilot() {
         <button class="copilot-filter-chip active" data-q="all">
           <i data-lucide="sparkles" style="width:12px;height:12px;"></i>
           <span>All</span>
+        </button>
+        <button class="copilot-filter-chip" id="copilot-chip-sentinel" data-scenario="device-control" data-q="Take autonomous control of this mobile device" style="border-color:rgba(0,240,255,0.4); background:rgba(0,240,255,0.08);">
+          <i data-lucide="shield" style="width:12px;height:12px;color:#00f0ff;"></i>
+          <span style="color:#00f0ff;font-weight:700;">Take Control of Device</span>
         </button>
         <button class="copilot-filter-chip" data-scenario="null-pointer" data-q="Fix an Error">
           <i data-lucide="wrench" style="width:12px;height:12px;"></i>
@@ -595,6 +618,50 @@ function renderChatThread() {
               </div>
             ` : ''}
 
+            <!-- Autonomous Mobile Device Sentinel Card -->
+            ${msg.hasSentinelCard ? `
+              <div class="copilot-sentinel-card">
+                <div class="copilot-sentinel-header">
+                  <div class="copilot-sentinel-title">
+                    <span style="font-size:16px;">🤖</span>
+                    <span>AI Autonomous Mobile Sentinel</span>
+                  </div>
+                  <span class="sentinel-home-badge badge-armed">● IN CONTROL</span>
+                </div>
+                <div style="font-size:11.5px; color:#94a3b8; line-height:1.5;">
+                  ${escapeHtml(msg.sentinelMsg || 'Device telemetry mapped and active. Real-time battery, heap sandbox, and egress zero-trust defense engaged.')}
+                </div>
+                <div class="sentinel-home-metrics" style="margin: 10px 0 8px 0;">
+                  <div class="sentinel-metric-item">
+                    <span class="sentinel-metric-lbl">Integrity</span>
+                    <span class="sentinel-metric-val text-cyan">${msg.sentinelData?.integrityScore || 98}%</span>
+                  </div>
+                  <div class="sentinel-metric-item">
+                    <span class="sentinel-metric-lbl">Heap RAM</span>
+                    <span class="sentinel-metric-val text-emerald">${msg.sentinelData?.telemetry?.memory?.usedHeap || 38} MB</span>
+                  </div>
+                  <div class="sentinel-metric-item">
+                    <span class="sentinel-metric-lbl">Perimeter</span>
+                    <span class="sentinel-metric-val text-purple">${msg.sentinelData?.lockdownMode ? 'LOCKDOWN' : 'Zero-Trust'}</span>
+                  </div>
+                </div>
+                <div class="copilot-sentinel-actions">
+                  <button class="btn-copilot-sentinel" data-sentinel-action="open-hud">
+                    <span>⚡ Cyber HUD</span>
+                  </button>
+                  <button class="btn-copilot-sentinel" data-sentinel-action="compact-ram">
+                    <span>🧹 Flush RAM</span>
+                  </button>
+                  <button class="btn-copilot-sentinel" data-sentinel-action="lockdown">
+                    <span>🚨 Lockdown</span>
+                  </button>
+                  <button class="btn-copilot-sentinel" data-sentinel-action="haptic">
+                    <span>📳 Haptic</span>
+                  </button>
+                </div>
+              </div>
+            ` : ''}
+
             <!-- Connect API Key Invitation if not configured -->
             ${msg.showKeyPrompt ? `
               <div class="copilot-api-key-invite" id="invite-api-btn-${msg.id}">
@@ -687,8 +754,12 @@ function setupCopilotInteractions(screen) {
     // Check if query matches a rich preset diagnostic scenario
     const lower = text.toLowerCase();
     let responsePayload = null;
+    const isControlRequest = lower.includes('control') || lower.includes('mobile') || lower.includes('device') || lower.includes('sentinel') || lower.includes('lockdown') || presetKey === 'device-control';
 
-    if (presetKey && PRESET_SCENARIOS[presetKey]) {
+    if (isControlRequest) {
+      await takeControlOfDevice({ silent: false });
+      responsePayload = PRESET_SCENARIOS['device-control'];
+    } else if (presetKey && PRESET_SCENARIOS[presetKey]) {
       responsePayload = PRESET_SCENARIOS[presetKey];
     } else if (lower.includes('crash') || lower.includes('nullpointer') || lower.includes('splash') || lower.includes('null object')) {
       responsePayload = PRESET_SCENARIOS['null-pointer'];
@@ -751,10 +822,13 @@ function setupCopilotInteractions(screen) {
           role: 'ai',
           text: rawAiResponse || responsePayload.aiText,
           time: respTime,
-          hasIssueCard: true,
-          hasFixCard: true,
+          hasIssueCard: Boolean(responsePayload.issueData),
+          hasFixCard: Boolean(responsePayload.fixData),
           issueData: responsePayload.issueData,
-          fixData: { ...responsePayload.fixData },
+          fixData: responsePayload.fixData ? { ...responsePayload.fixData } : null,
+          hasSentinelCard: Boolean(responsePayload.isDeviceControl),
+          sentinelData: responsePayload.isDeviceControl ? getDeviceControlState() : null,
+          sentinelMsg: responsePayload.isDeviceControl ? 'Autonomous mobile device control engaged. Hardware sensors, heap memory, and defense matrix are live.' : null,
           followUps: responsePayload.followUps
         });
       } else {
@@ -997,6 +1071,25 @@ function attachMessageEvents(screen) {
   // 7. Click to open API Key modal from inline prompt
   screen.querySelectorAll('.copilot-api-key-invite, #btn-fix-api-key').forEach(el => {
     el.addEventListener('click', openAiSettingsModal);
+  });
+
+  // 8. Mobile Sentinel Actions from Chat Cards
+  screen.querySelectorAll('[data-sentinel-action]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const action = btn.dataset.sentinelAction;
+      if (action === 'open-hud') {
+        showMobileDeviceControlModal();
+      } else if (action === 'compact-ram') {
+        btn.innerHTML = '<span>Compacting...</span>';
+        await optimizeMemoryAndGarbageCollect();
+        renderAndUpdateThread();
+      } else if (action === 'lockdown') {
+        toggleDeviceLockdown();
+        renderAndUpdateThread();
+      } else if (action === 'haptic') {
+        dispatchMobileHapticAlert('Mobile Haptic Alert', 'SYBRAI physical vibration and sensor sync verified.');
+      }
+    });
   });
 }
 

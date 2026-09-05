@@ -68,7 +68,9 @@ function notifyListeners() {
       console.warn('[MobileDeviceControl] Listener callback error:', e);
     }
   });
-  window.dispatchEvent(new CustomEvent('sybrai:device-control-change', { detail: { ...controlState } }));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('sybrai:device-control-change', { detail: { ...controlState } }));
+  }
 }
 
 export function subscribeDeviceControl(cb) {
@@ -463,6 +465,7 @@ function addDefenseLog(tag, text, level = 'info') {
 // ============================================
 
 function showLockdownScreenOverlay() {
+  if (typeof document === 'undefined') return;
   hideLockdownScreenOverlay();
 
   const overlay = document.createElement('div');
@@ -521,6 +524,7 @@ function showLockdownScreenOverlay() {
 }
 
 function hideLockdownScreenOverlay() {
+  if (typeof document === 'undefined') return;
   const existing = document.getElementById('sybrai-lockdown-overlay');
   if (existing) existing.remove();
 }
@@ -530,6 +534,7 @@ function hideLockdownScreenOverlay() {
 // ============================================
 
 export function showMobileDeviceControlModal() {
+  if (typeof document === 'undefined') return;
   const existing = document.getElementById('sybrai-mobile-hud-modal');
   if (existing) existing.remove();
 

@@ -13,6 +13,7 @@ import { renderLearning } from './screens/Learning.js';
 import { renderCopilot } from './screens/Copilot.js';
 import { renderProfile } from './screens/Profile.js';
 import { renderNotifications } from './screens/Notifications.js';
+import './utils/mobileDeviceControl.js';
 
 // ---- Initialize Theme ----
 initTheme();

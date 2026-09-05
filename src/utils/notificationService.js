@@ -126,6 +126,13 @@ export async function sendDeviceNotification({ title, body, icon = '/icons/icon-
 }
 
 /**
+ * Convenience helper to show device notification directly with title and body
+ */
+export async function showDeviceNotification(title, body, options = {}) {
+  return sendDeviceNotification({ title, body, ...options });
+}
+
+/**
  * Load all active notifications (saved in localStorage or seed from mock data)
  */
 export function getNotifications() {

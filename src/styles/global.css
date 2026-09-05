@@ -45,6 +45,22 @@ body {
   }
 }
 
+/* Standalone / PWA installed mode on mobile */
+@media (display-mode: standalone) {
+  body {
+    padding: 0;
+    background-color: var(--color-bg);
+  }
+  .app-shell {
+    border-radius: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .status-bar {
+    display: none !important;
+  }
+}
+
 /* ---------- Status Bar ---------- */
 .status-bar {
   display: flex;

@@ -126,85 +126,86 @@ export const sessions = [
 ];
 
 export const analysisData = {
-  score: 92,
+  score: 88,
   maxScore: 100,
-  label: 'Great! Your app is healthy.',
+  label: 'Security Posture: Protected (OWASP Top 10 Aligned)',
   stats: {
     found: 3,
-    fixed: 2,
-    warnings: 1,
+    fixed: 14,
+    warnings: 2,
   },
 };
 
 export const consoleLines = [
-  { type: 'info', text: '[10:30:01] SYBRAI Engine v1.0.0 initialized' },
-  { type: 'dim', text: '[10:30:01] Loading project configuration...' },
-  { type: 'default', text: '[10:30:02] Scanning source files... 142 files found' },
-  { type: 'default', text: '[10:30:03] Running static analysis...' },
-  { type: 'warning', text: '[10:30:04] ⚠ Warning: Unused import in AuthService.js:12' },
-  { type: 'error', text: '[10:30:04] ✗ Error: Null reference in MainActivity.java:45' },
-  { type: 'error', text: '[10:30:04] ✗ Error: Missing error handler in ApiClient.kt:89' },
-  { type: 'warning', text: '[10:30:05] ⚠ Warning: Deprecated API usage in UserModel.kt:23' },
-  { type: 'info', text: '[10:30:05] Analysis complete. 2 errors, 2 warnings.' },
-  { type: 'default', text: '[10:30:06] Generating fix suggestions...' },
-  { type: 'info', text: '[10:30:07] ✓ Fix applied: MainActivity.java:45' },
-  { type: 'info', text: '[10:30:07] ✓ Fix applied: ApiClient.kt:89' },
-  { type: 'default', text: '[10:30:08] Re-running analysis...' },
-  { type: 'info', text: '[10:30:09] ✓ All critical issues resolved.' },
+  { type: 'info', text: '[09:30:01] [SOC-MONITOR] Autonomous Threat Agent initialized' },
+  { type: 'dim', text: '[09:30:02] [AGENT-HANDOFF] Triage -> VulnerabilityAuditorAgent' },
+  { type: 'default', text: '[09:30:04] [OWASP-SCAN] Auditing 142 source files for secrets & CVEs...' },
+  { type: 'error', text: '[09:30:05] [ALERT] CWE-798: High-entropy API key detected in client bundle' },
+  { type: 'warning', text: '[09:30:06] [WARN] CWE-942: Permissive Access-Control-Allow-Origin: *' },
+  { type: 'info', text: '[09:30:07] [GUARDRAIL] Human approval enforced before token revocation' },
+  { type: 'default', text: '[09:30:08] [HOTPATCH] Applying parameterized query patch to auth route' },
+  { type: 'info', text: '[09:30:09] [DEFENSE-PASS] Content-Security-Policy (CSP) active' },
+  { type: 'info', text: '[09:30:10] [STATUS] 14 vulnerabilities mitigated, 0 critical active exploits' },
 ];
 
 export const debugSections = [
   {
-    title: 'Null Reference Check',
+    title: 'OWASP A01: Broken Access Control',
     status: 'pass',
-    icon: 'check-circle',
-    details: 'All object references validated. No null pointer risks detected after fix.',
+    icon: 'shield-check',
+    details: 'Tenant ID validation enforced on all user route handlers. IDOR/BOLA attacks blocked.',
   },
   {
-    title: 'API Error Handling',
-    status: 'pass',
-    icon: 'check-circle',
-    details: 'Try-catch blocks added to all API calls. Error responses properly handled.',
-  },
-  {
-    title: 'Memory Management',
+    title: 'OWASP A02: Cryptographic Failures & Secrets',
     status: 'fail',
-    icon: 'alert-circle',
-    details: 'Potential memory leak detected in ImageCache. Objects not being released on Activity destroy.',
+    icon: 'key-round',
+    details: 'CWE-798: Secret key found in apiClient.js. Immediate server-side env isolation required.',
   },
   {
-    title: 'Thread Safety',
+    title: 'OWASP A03: Injection (SQLi & Command)',
     status: 'pass',
-    icon: 'check-circle',
-    details: 'All shared resources properly synchronized. No race conditions detected.',
+    icon: 'database',
+    details: 'CWE-89: All database queries utilize parameterized prepared statements. Raw concatenation forbidden.',
+  },
+  {
+    title: 'OWASP A05: Security Misconfiguration',
+    status: 'pass',
+    icon: 'sliders',
+    details: 'CORS whitelist configured. Strict-Transport-Security (HSTS) and X-Frame-Options active.',
+  },
+  {
+    title: 'OWASP A07: Authentication & Session Integrity',
+    status: 'pass',
+    icon: 'lock',
+    details: 'JWT tokens use RS256 with 15-minute expiration and secure HttpOnly cookie flags.',
   },
 ];
 
 export const learningResources = [
   {
-    title: 'Understanding Null Pointer Exceptions',
-    desc: 'Learn how to prevent and handle null references in your code.',
-    icon: 'book-open',
+    title: 'Defending against SQL Injection (CWE-89)',
+    desc: 'Deep dive into prepared statements and ORM security best practices.',
+    icon: 'database',
   },
   {
-    title: 'Best Practices: Error Handling',
-    desc: 'Comprehensive guide to building robust error handling patterns.',
+    title: 'Zero-Trust Secrets Management (CWE-798)',
+    desc: 'How to prevent API keys and private tokens from leaking into client bundles.',
     icon: 'shield',
   },
   {
-    title: 'Memory Leak Prevention',
-    desc: 'Tips and techniques for efficient memory management.',
-    icon: 'cpu',
+    title: 'Cross-Site Scripting (XSS) Prevention',
+    desc: 'Context-aware output encoding and strict Content Security Policy (CSP).',
+    icon: 'code',
   },
   {
-    title: 'API Design Patterns',
-    desc: 'Modern approaches to building reliable API integrations.',
-    icon: 'globe',
+    title: 'JWT Authentication & Session Hardening',
+    desc: 'Mitigating session hijacking, algorithm confusion, and replay attacks.',
+    icon: 'lock',
   },
   {
-    title: 'Debugging Like a Pro',
-    desc: 'Advanced debugging techniques and tools for faster resolution.',
-    icon: 'bug',
+    title: 'OWASP Mobile Top 10 Security Checklist',
+    desc: 'Essential security guidelines for Android & iOS mobile applications.',
+    icon: 'smartphone',
   },
 ];
 

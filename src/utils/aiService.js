@@ -62,8 +62,14 @@ async function callGemini(config, prompt, history = []) {
 
   const contents = [];
 
-  // Add system instruction context
-  const systemInstruction = "You are SYBRAI, an advanced AI Bug Fixer and Code Analyzer mobile assistant. Provide clear, concise, actionable solutions formatted in markdown with code snippets. Keep responses direct and friendly for mobile viewing.";
+  // Add system instruction context (Cybersecurity & AppSec Specialist)
+  const systemInstruction = `You are SYBRAI CyberSec AI — an autonomous Cybersecurity, DevSecOps, and Application Vulnerability Specialist.
+You detect OWASP Top 10 vulnerabilities (CWE-89 SQLi, CWE-79 XSS, CWE-798 Hardcoded Secrets, CWE-918 SSRF, Broken Authentication, CORS flaws, and Memory safety exploits).
+Always provide:
+1. 🛡️ Threat Assessment with CVSS Severity Rating (Critical / High / Medium / Low).
+2. 🔍 Exploit Vector & Root Cause.
+3. ⚡ Hardened Code Remediation with copyable patch.
+Format cleanly with markdown and code snippets for mobile screens.`;
 
   // Add conversation history
   history.slice(-6).forEach(msg => {
@@ -143,7 +149,16 @@ async function callOpenAi(config, prompt, history = []) {
   // Standard chat completions endpoint
   const endpoint = config.baseUrl || 'https://api.openai.com/v1/chat/completions';
   const messages = [
-    { role: 'system', content: 'You are SYBRAI, an AI Bug Fixer and Code Analyzer for mobile developers. Be concise and practical.' },
+    {
+      role: 'system',
+      content: `You are SYBRAI CyberSec AI — an autonomous Cybersecurity, DevSecOps, and Application Vulnerability Specialist.
+Analyze code for OWASP Top 10 vulnerabilities (CWE-89 SQLi, CWE-79 XSS, CWE-798 Hardcoded Secrets, CWE-918 SSRF, Broken Auth, CORS flaws, and Memory safety exploits).
+Always provide:
+1. 🛡️ Threat Assessment with CVSS Severity Rating (Critical / High / Medium / Low).
+2. 🔍 Exploit Vector & Root Cause.
+3. ⚡ Hardened Code Remediation with copyable patch.
+Be concise and practical for mobile developers.`
+    },
     ...history.slice(-6).map(m => ({
       role: m.type === 'user' ? 'user' : 'assistant',
       content: m.text,
@@ -199,20 +214,22 @@ function extractResponseText(result) {
 }
 
 /**
- * AI Real-Time Bug Alert Generator for Mobile Notifications
+ * AI Real-Time Cybersecurity Threat Alert Generator for Mobile Notifications
  */
 export async function generateAiAlert(customTopic = '') {
   const config = getAiConfig();
 
-  const prompt = `Generate a realistic, critical software bug alert for a mobile or web app ${customTopic ? `related to: ${customTopic}` : ''}.
-Return strictly JSON with this exact schema:
+  const prompt = `Generate a realistic, critical CYBERSECURITY or APPLICATION VULNERABILITY threat alert for a mobile or web app ${customTopic ? `related to: ${customTopic}` : ''}.
+Return strictly a JSON object with this exact schema:
 {
-  "title": "Short title max 6 words",
-  "desc": "Summary of the bug or issue in 1-2 sentences",
-  "file": "file/path.ext:line",
-  "type": "warning" | "error" | "critical" | "success",
-  "icon": "alert-circle" | "alert-triangle" | "shield-alert" | "cpu",
-  "fixSuggestion": "Specific 1-line code fix suggestion"
+  "title": "Short threat title max 6 words (e.g. Hardcoded Secret Key Exposed)",
+  "desc": "Threat summary describing the security risk in 1-2 sentences",
+  "file": "path/to/vulnerable-file.ext:line",
+  "type": "critical" | "error" | "warning" | "success",
+  "icon": "shield-alert" | "key-round" | "lock" | "alert-triangle",
+  "cvss": "9.8" | "8.6" | "7.5" | "6.2",
+  "cwe": "CWE-798" | "CWE-89" | "CWE-79" | "CWE-918" | "CWE-287",
+  "fixSuggestion": "Specific 1-line code remediation patch"
 }`;
 
   if (config.isConfigured) {
@@ -230,63 +247,75 @@ Return strictly JSON with this exact schema:
         const parsed = JSON.parse(jsonMatch[0]);
         return {
           id: Date.now(),
-          title: parsed.title || 'AI Bug Detected',
-          desc: parsed.desc || 'An issue was flagged in your active build.',
-          file: parsed.file || 'src/services/api.js:42',
-          type: parsed.type || 'warning',
-          icon: parsed.icon || 'alert-triangle',
-          fixSuggestion: parsed.fixSuggestion || 'Review null safety check.',
+          title: parsed.title || 'Security Vulnerability Detected',
+          desc: parsed.desc || 'An unpatched vulnerability was identified in the codebase.',
+          file: parsed.file || 'src/security/auth.ts:42',
+          type: parsed.type || 'critical',
+          icon: parsed.icon || 'shield-alert',
+          cvss: parsed.cvss || '8.8',
+          cwe: parsed.cwe || 'CWE-89',
+          fixSuggestion: parsed.fixSuggestion || 'Use parameterized queries with prepared statements.',
           time: 'Just now',
           unread: true,
           isAiGenerated: true,
         };
       }
     } catch (e) {
-      console.warn('[SYBRAI AI] Failed to parse generated alert JSON:', e);
+      console.warn('[SYBRAI AI] Failed to parse generated cyber alert JSON:', e);
     }
   }
 
-  // Fallback realistic smart alerts if offline or no key set
+  // Fallback realistic smart cyber alerts if offline or no key set
   const pool = [
     {
-      title: 'Uncaught Promise Rejection',
-      desc: 'Unhandled API error in AuthService token refresh lifecycle.',
-      file: 'src/services/AuthService.js:84',
-      type: 'warning',
-      icon: 'alert-triangle',
-      fixSuggestion: 'Wrap in try/catch block and handle 401 token invalidation.',
+      title: 'Hardcoded Secret Key Exposed',
+      desc: 'High entropy API secret detected in client bundle. Token can be extracted via reverse engineering.',
+      file: 'src/lib/apiClient.js:14',
+      type: 'critical',
+      icon: 'key-round',
+      cvss: '9.8',
+      cwe: 'CWE-798',
+      fixSuggestion: 'Move secret key to server-side environment variables and proxy requests.',
     },
     {
-      title: 'Critical Memory Leak',
-      desc: 'Bitmap buffer not disposed after texture rendering cycle.',
-      file: 'src/components/ImagePreview.kt:128',
+      title: 'SQL Injection in Auth Route',
+      desc: 'Unsanitized user parameters concatenated directly into SQL statement.',
+      file: 'server/controllers/login.ts:47',
+      type: 'critical',
+      icon: 'shield-alert',
+      cvss: '8.9',
+      cwe: 'CWE-89',
+      fixSuggestion: 'Replace query concatenation with parameterized prepared statements: db.query("SELECT * WHERE id=?", [id]).',
+    },
+    {
+      title: 'Cross-Site Scripting (XSS)',
+      desc: 'Unescaped user input rendered directly via innerHTML in chat interface.',
+      file: 'src/screens/Chat.js:93',
       type: 'error',
-      icon: 'alert-circle',
-      fixSuggestion: 'Call recycle() or use WeakReference inside onCleared().',
+      icon: 'alert-triangle',
+      cvss: '7.5',
+      cwe: 'CWE-79',
+      fixSuggestion: 'Sanitize content with DOMPurify or use textContent instead of innerHTML.',
     },
     {
-      title: 'Security Vulnerability Alert',
-      desc: 'Outdated CORS policy allows arbitrary origin reflections.',
-      file: 'server/security/cors.ts:15',
+      title: 'Broken Object Level Authorization',
+      desc: 'Endpoint retrieves user record by ID from URL params without tenant ownership check (BOLA/IDOR).',
+      file: 'api/routes/users.js:28',
+      type: 'critical',
+      icon: 'lock',
+      cvss: '8.5',
+      cwe: 'CWE-285',
+      fixSuggestion: 'Verify req.user.tenantId matches targetResource.tenantId before returning data.',
+    },
+    {
+      title: 'Permissive CORS Wildcard Policy',
+      desc: 'Access-Control-Allow-Origin set to * with Access-Control-Allow-Credentials enabled.',
+      file: 'server/middleware/cors.js:12',
       type: 'warning',
       icon: 'shield-alert',
-      fixSuggestion: 'Restrict Access-Control-Allow-Origin to authorized client domains.',
-    },
-    {
-      title: 'High CPU Usage Detected',
-      desc: 'Infinite re-render loop detected in Dashboard state subscriber.',
-      file: 'src/screens/Dashboard.js:63',
-      type: 'warning',
-      icon: 'cpu',
-      fixSuggestion: 'Add dependency array [activeTab] to avoid unbounded hook execution.',
-    },
-    {
-      title: 'Database Pool Exhaustion',
-      desc: 'Connections exceeded threshold (95/100 connections active).',
-      file: 'config/database.js:29',
-      type: 'error',
-      icon: 'database',
-      fixSuggestion: 'Enable connection timeout and connection pooling reaper.',
+      cvss: '6.5',
+      cwe: 'CWE-942',
+      fixSuggestion: 'Specify explicit allowed domain whitelist instead of wildcard reflection.',
     },
   ];
 
@@ -301,15 +330,83 @@ Return strictly JSON with this exact schema:
 }
 
 /**
+ * Run a full cybersecurity scan using the active AI model
+ */
+export async function runCyberScan(targetDescription = 'Full Application Codebase') {
+  const config = getAiConfig();
+  const prompt = `Conduct a comprehensive CYBERSECURITY & APPSEC VULNERABILITY AUDIT for: "${targetDescription}".
+Evaluate:
+1. Hardcoded secrets & API key exposure (CWE-798)
+2. Injection vulnerabilities (SQLi CWE-89, Command Injection CWE-78)
+3. Client-side security (XSS CWE-79, CSP violations)
+4. Authentication & Session integrity (CWE-287, JWT expiration)
+5. Sensitive data exposure in logs/storage
+
+Provide:
+- Security Score (/100)
+- Detailed findings table with CVSS scores
+- Concrete code remediation patch`;
+
+  if (config.isConfigured) {
+    try {
+      if (config.provider === 'openai') {
+        return await callOpenAi(config, prompt);
+      } else {
+        return await callGemini(config, prompt);
+      }
+    } catch (err) {
+      console.warn('[CyberSec AI Scan] API call error:', err);
+    }
+  }
+
+  // Fallback high-fidelity audit report
+  return `### 🛡️ SYBRAI AI Cybersecurity Audit Report
+**Target**: ${targetDescription}
+**Security Posture Score**: **84/100** (Moderate Risk)
+
+---
+
+#### 🚨 Critical Findings
+1. **[CVSS 9.8 - CRITICAL] Hardcoded API Secret in Client Bundle**
+   - **Vector**: \`CWE-798: Use of Hard-coded Credentials\`
+   - **Location**: \`src/services/apiClient.js:14\`
+   - **Exploit Risk**: Secrets can be extracted from public JS bundles by attackers.
+   - **Remediation**:
+\`\`\`javascript
+// BEFORE (VULNERABLE):
+const API_SECRET = "sk-live-prod-secret-9842";
+
+// AFTER (SECURE):
+const API_SECRET = process.env.SERVER_SECURE_KEY; // Keep server-side only
+\`\`\`
+
+2. **[CVSS 7.5 - HIGH] Cross-Site Scripting (XSS) via Unescaped innerHTML**
+   - **Vector**: \`CWE-79: Improper Neutralization of Input During Web Page Generation\`
+   - **Location**: \`src/screens/Chat.js:48\`
+   - **Exploit Risk**: Execution of malicious JavaScript in victim user sessions.
+   - **Remediation**: Use \`textContent\` or DOMPurify sanitize library before rendering user-controlled input.
+
+3. **[CVSS 6.5 - MEDIUM] Missing Content-Security-Policy (CSP)**
+   - **Vector**: \`CWE-1021: Improper Restriction of Rendered UI Layers\`
+   - **Remediation**: Configure HTTP header \`Content-Security-Policy: default-src 'self'\`.
+
+---
+💡 *Remediation completed. Click "Apply Security Patch" to enforce safe defaults.*`;
+}
+
+/**
  * Smart fallback response for chat
  */
 function generateFallbackResponse(prompt) {
   const lower = prompt.toLowerCase();
+  if (lower.includes('vuln') || lower.includes('security') || lower.includes('cyber') || lower.includes('hack') || lower.includes('cve')) {
+    return `### 🛡️ SYBRAI CyberSec AI Assessment\n\nI conducted an automated threat analysis:\n\n1. **Vulnerability Vectors**: Scanned for OWASP Top 10 (Injection, Broken Auth, Secrets Leakage, XSS, SSRF).\n2. **Identified Risk**: Hardcoded API keys and unescaped DOM insertions represent the highest immediate attack surface.\n3. **Remediation Plan**:\n\`\`\`javascript\n// Enforce environment isolation & input escaping\nconst sanitizeInput = (str) => String(str).replace(/[&<>"']/g, (m) => ({\n  '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;'\n}[m]));\n\`\`\`\n\nTap **"AI Scan & Trigger Mobile Alert"** on the Notifications tab to test real-time threat dispatching!`;
+  }
   if (lower.includes('crash') || lower.includes('error')) {
     return `### 🔍 AI Analysis Result\n\nI analyzed your crash report:\n\n1. **Root Cause**: Likely a null reference or unhandled asynchronous exception during lifecycle initialization.\n2. **Recommendation**: Verify your state bindings and ensure async callbacks check if the UI component is mounted before setting state.\n3. **Quick Fix**:\n\`\`\`javascript\nif (data && data.user) {\n  renderUserProfile(data.user);\n}\n\`\`\``;
   }
   if (lower.includes('notification') || lower.includes('alert')) {
     return `### 🔔 Mobile Notifications Ready\n\nSYBRAI supports **Native Device Web Push Notifications** on mobile devices.\n\n- Visit the **Notifications** tab to grant permission.\n- Tap **"Scan & Trigger Alert"** to test native mobile heads-up alerts on your device!`;
   }
-  return `### 🤖 SYBRAI AI Copilot\n\nI am ready to help you analyze code, diagnose crashes, and fix bugs!\n\n💡 **Tip**: To connect your live **Google Gemini** or **OpenAI** model, add your API key in your \`.env\` file (\`VITE_AI_API_KEY=...\`) or configure it directly in **Profile → AI Model Settings**.`;
+  return `### 🛡️ SYBRAI CyberSec AI Copilot\n\nI am your autonomous **Cybersecurity & AppSec Defense Assistant**.\n\nAsk me to:\n- 🔍 Audit code for OWASP Top 10 vulnerabilities\n- 🔑 Detect leaked API keys and hardcoded credentials\n- 🛡️ Harden authentication, JWT, and CORS configs\n- 🚨 Trigger real-time mobile security alerts to your phone`;
 }

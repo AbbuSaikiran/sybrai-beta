@@ -13,6 +13,11 @@ import {
   getIsScanning, getIsFixing,
   getCurrentFindings, getActivityLog, getLiveStats, getScanHistory,
 } from '../utils/scanEngine.js';
+import {
+  showMobileDeviceControlModal,
+  getDeviceControlState,
+  subscribeDeviceControl,
+} from '../utils/mobileDeviceControl.js';
 
 let eventCleanups = [];
 
@@ -54,6 +59,10 @@ export function renderHome() {
         </div>
       </div>
       <div class="top-app-bar__trailing" style="display:flex; gap:6px; align-items:center;">
+        <button class="sentinel-topbar-pill" id="home-sentinel-header-btn" title="Autonomous AI Mobile Sentinel">
+          <span class="sentinel-topbar-dot"></span>
+          <span>AI IN CONTROL</span>
+        </button>
         <button class="top-app-bar__icon-btn" aria-label="Notifications" onclick="window.location.hash='/notifications'" style="position:relative;">
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
@@ -116,6 +125,41 @@ export function renderHome() {
           <i data-lucide="sparkles" style="width:16px;height:16px;"></i>
           <span>Start Bug Analysis</span>
           <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+
+      <!-- Autonomous AI Mobile Sentinel Card -->
+      <div class="sentinel-home-card" id="sentinel-home-card">
+        <div class="sentinel-home-top">
+          <div class="sentinel-home-brand">
+            <div class="sentinel-home-icon">🤖</div>
+            <div>
+              <div class="sentinel-home-name">AI Autonomous Mobile Sentinel</div>
+              <div style="font-size:10px; color:#00f0ff; font-weight:600;">GPT-5.6 Luna Active Device Control</div>
+            </div>
+          </div>
+          <span class="sentinel-home-badge badge-armed" id="sentinel-home-badge">● IN CONTROL</span>
+        </div>
+        <p class="sentinel-home-info">
+          SYBRAI AI has taken autonomous control of your mobile device telemetry, sandbox integrity, memory compaction, and zero-trust perimeter defense.
+        </p>
+        <div class="sentinel-home-metrics">
+          <div class="sentinel-metric-item">
+            <span class="sentinel-metric-lbl">Integrity</span>
+            <span class="sentinel-metric-val text-cyan" id="home-sentinel-score">98%</span>
+          </div>
+          <div class="sentinel-metric-item">
+            <span class="sentinel-metric-lbl">RAM Heap</span>
+            <span class="sentinel-metric-val text-emerald" id="home-sentinel-ram">38 MB</span>
+          </div>
+          <div class="sentinel-metric-item">
+            <span class="sentinel-metric-lbl">Perimeter</span>
+            <span class="sentinel-metric-val text-purple" id="home-sentinel-status">Active Shield</span>
+          </div>
+        </div>
+        <button class="sentinel-home-action-btn" id="home-open-sentinel-btn">
+          <span>Open AI Device Control Matrix</span>
+          <i data-lucide="arrow-right" style="width:14px;height:14px;"></i>
         </button>
       </div>
 
@@ -365,14 +409,30 @@ function setupHomeInteractivity(screen) {
     window.location.hash = '/analysis';
   });
 
-  // Ask chips
-  document.querySelectorAll('.home-ask-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const q = chip.dataset.q;
-      window.location.hash = '/copilot';
-      sessionStorage.setItem('sybrai_pending_query', q);
-    });
+  // Sentinel Device Control
+  const sentinelBtn = document.getElementById('home-open-sentinel-btn');
+  const sentinelTopBtn = document.getElementById('home-sentinel-header-btn');
+  if (sentinelBtn) sentinelBtn.addEventListener('click', () => showMobileDeviceControlModal());
+  if (sentinelTopBtn) sentinelTopBtn.addEventListener('click', () => showMobileDeviceControlModal());
+
+  // Subscribe to live device control state
+  const unsubscribeSentinel = subscribeDeviceControl((state) => {
+    const scoreEl = document.getElementById('home-sentinel-score');
+    const ramEl = document.getElementById('home-sentinel-ram');
+    const badgeEl = document.getElementById('sentinel-home-badge');
+    const statusEl = document.getElementById('home-sentinel-status');
+
+    if (scoreEl) scoreEl.textContent = `${state.integrityScore || 98}%`;
+    if (ramEl) ramEl.textContent = `${state.telemetry?.memory?.usedHeap || 38} MB`;
+    if (badgeEl) {
+      badgeEl.textContent = state.isActive ? '● IN CONTROL' : '○ STANDBY';
+      badgeEl.className = `sentinel-home-badge ${state.isActive ? 'badge-armed' : ''}`;
+    }
+    if (statusEl) {
+      statusEl.textContent = state.lockdownMode ? 'LOCKDOWN 🚨' : state.quarantineActive ? 'QUARANTINE' : 'Active Shield';
+    }
   });
+  eventCleanups.push(unsubscribeSentinel);
 
   if (window.lucide) lucide.createIcons();
 }

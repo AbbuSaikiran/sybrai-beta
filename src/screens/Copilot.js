@@ -1,12 +1,12 @@
 // ============================================
 // SYBRAI — AI Chat / Copilot Screen
 // Intelligent Coding Assistant (Ask. Analyze. Fix. Learn.)
-// User-Friendly, Dynamic Query-Assisted Bug Fixer
+// User-Friendly, Real AI-Powered Chat with API Keys
 // ============================================
 
 import { userProfile } from '../data/mockData.js';
 import { showToast } from '../utils/toast.js';
-import { chatWithAi, getAiConfig, saveAiConfig } from '../utils/aiService.js';
+import { chatWithAi, getAiConfig, saveAiConfig, testAiConnection } from '../utils/aiService.js';
 import { startLiveTranscription, stopLiveTranscription, isCurrentlyTranscribing } from '../utils/audioService.js';
 
 // Pre-packaged rich diagnostic scenarios for quick access and recent chats
@@ -218,7 +218,7 @@ export function renderCopilot() {
             <span>Learn While You Build</span>
           </div>
           <div class="copilot-side-promo-desc">
-            Get instant explanations, unified diffs, and auto-fixes as you code.
+            Connect your Gemini or OpenAI API key to get real-time code fixes and automated patches.
           </div>
         </div>
       </div>
@@ -246,11 +246,16 @@ export function renderCopilot() {
         <button class="top-app-bar__icon-btn" id="copilot-new-btn" aria-label="New Chat" title="Start New Chat">
           <i data-lucide="message-square-plus"></i>
         </button>
-        <button class="top-app-bar__icon-btn" id="copilot-settings-btn" aria-label="AI Engine Settings" title="AI Settings">
+        <button class="top-app-bar__icon-btn" id="copilot-settings-btn" aria-label="AI Engine Settings & API Keys" title="AI API Keys">
           <i data-lucide="settings"></i>
         </button>
         <img src="${userProfile.avatar || '/avatar.jpg'}" alt="${userProfile.name}" class="copilot-user-avatar" onclick="window.location.hash='/profile'" title="${userProfile.name}" />
       </div>
+    </div>
+
+    <!-- Real AI API Status Indicator Banner -->
+    <div class="copilot-api-status-banner" id="copilot-api-status-banner">
+      ${renderAiStatusBar()}
     </div>
 
     <!-- Hero Banner with 3D Robot Mascot (Matches Image 2) -->
@@ -342,7 +347,7 @@ export function renderCopilot() {
         </button>
       </div>
       <div class="copilot-input-subtext">
-        <span>SYBRAI AI can make mistakes. Verify important code fixes.</span>
+        <span>SYBRAI AI is powered by live LLMs. Verify code before production use.</span>
       </div>
     </div>
   `;
@@ -351,16 +356,53 @@ export function renderCopilot() {
   return screen;
 }
 
+function renderAiStatusBar() {
+  const config = getAiConfig();
+  if (config.isConfigured) {
+    const provName = config.provider === 'openai' ? 'OpenAI' : 'Google Gemini';
+    return `
+      <div class="copilot-api-status copilot-api-status--connected" id="open-api-modal-btn" role="button" tabindex="0" title="Click to view or change API key">
+        <div class="copilot-api-status__left">
+          <span class="copilot-api-status__pulse"></span>
+          <span class="copilot-api-status__text">
+            <strong>Real AI Connected:</strong> ${provName} (${escapeHtml(config.model)})
+          </span>
+        </div>
+        <span class="copilot-api-status__btn">
+          <i data-lucide="sliders" style="width:12px;height:12px;"></i>
+          <span>Settings</span>
+        </span>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="copilot-api-status copilot-api-status--unconfigured" id="open-api-modal-btn" role="button" tabindex="0" title="Click to connect your Gemini or OpenAI API Key">
+        <div class="copilot-api-status__left">
+          <span class="copilot-api-status__pulse copilot-api-status__pulse--warn"></span>
+          <span class="copilot-api-status__text">
+            <strong>Connect Live AI:</strong> Enter Gemini (Free) or OpenAI API Key
+          </span>
+        </div>
+        <span class="copilot-api-status__btn copilot-api-status__btn--primary">
+          <i data-lucide="key" style="width:12px;height:12px;"></i>
+          <span>Connect Key</span>
+        </span>
+      </div>
+    `;
+  }
+}
+
 function renderChatThread() {
   if (!conversation || conversation.length === 0) {
     // Empty state - Welcoming and user-friendly (Image 1 ChatGPT style)
+    const config = getAiConfig();
     return `
       <div class="copilot-empty-state">
         <div class="copilot-empty-mascot-wrap">
           <img src="/robot-mascot.jpg" alt="SYBRAI Robot" class="copilot-empty-mascot" onerror="this.src='/logo.png'" />
         </div>
         <h2 class="copilot-empty-title">How can I help you today?</h2>
-        <p class="copilot-empty-sub">Ask a question, paste an error log, or choose a quick start below:</p>
+        <p class="copilot-empty-sub">Ask any coding question, paste error logs, or pick a starter below:</p>
 
         <div class="copilot-starter-grid">
           <div class="copilot-starter-card" data-scenario="null-pointer">
@@ -420,6 +462,38 @@ function renderChatThread() {
               <span>${msg.time}</span>
               <i data-lucide="check-check" style="width:12px;height:12px;color:#2563EB;"></i>
             </div>
+          </div>
+        </div>
+      `;
+    } else if (msg.isThinking) {
+      // Live thinking bubble
+      return `
+        <div class="copilot-msg copilot-msg--ai" id="${msg.id}">
+          <div class="copilot-msg-avatar copilot-msg-avatar--ai">
+            <img src="/robot-mascot.jpg" alt="AI" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='/logo.png'" />
+          </div>
+          <div class="copilot-msg-bubble" style="max-width:80%;">
+            <div class="copilot-thinking-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">
+              ${escapeHtml(msg.text)}
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (msg.isError) {
+      // API error state
+      return `
+        <div class="copilot-msg copilot-msg--ai" id="${msg.id}">
+          <div class="copilot-msg-avatar copilot-msg-avatar--ai" style="border-color:#EF4444;">
+            <i data-lucide="alert-triangle" style="width:16px;height:16px;color:#EF4444;"></i>
+          </div>
+          <div class="copilot-msg-bubble" style="border-color:rgba(239,68,68,0.3); background:#FFF5F5;">
+            <div style="color:#DC2626; font-size:12.5px;">${formatAiText(msg.text)}</div>
+            <button class="btn btn--primary btn--sm" id="btn-fix-api-key" style="margin-top:8px; align-self:flex-start; padding:6px 12px; font-size:11px;">
+              <i data-lucide="key"></i> Update API Key & Model
+            </button>
           </div>
         </div>
       `;
@@ -521,6 +595,16 @@ function renderChatThread() {
               </div>
             ` : ''}
 
+            <!-- Connect API Key Invitation if not configured -->
+            ${msg.showKeyPrompt ? `
+              <div class="copilot-api-key-invite" id="invite-api-btn-${msg.id}">
+                <div class="copilot-api-key-invite__text">
+                  <strong>💡 Connect Your API Key:</strong> Get real-time live answers from Google Gemini or OpenAI.
+                </div>
+                <span class="copilot-api-key-invite__badge">Connect Key ↗</span>
+              </div>
+            ` : ''}
+
             <!-- You can also ask suggestion pills (Matches Image 2) -->
             ${msg.followUps && msg.followUps.length > 0 ? `
               <div class="copilot-suggestions-wrap">
@@ -568,7 +652,7 @@ function setupCopilotInteractions(screen) {
   drawerClose?.addEventListener('click', closeDrawer);
   drawerBackdrop?.addEventListener('click', closeDrawer);
 
-  // --- Send Message & Dynamic Assistant Engine ---
+  // --- Send Message with Real AI Chat & API Keys ---
   const handleSend = async (customText = null, presetKey = null) => {
     const text = customText || inputEl?.value?.trim();
     if (!text) return;
@@ -585,12 +669,22 @@ function setupCopilotInteractions(screen) {
       time: timeStr
     });
 
+    // 2. Add thinking message
+    const thinkingId = `msg-thinking-${Date.now()}`;
+    const aiConfig = getAiConfig();
+    const modelName = aiConfig.provider === 'openai' ? `OpenAI (${aiConfig.model})` : `Gemini (${aiConfig.model})`;
+
+    conversation.push({
+      id: thinkingId,
+      role: 'ai',
+      isThinking: true,
+      text: `SYBRAI AI is analyzing with ${aiConfig.isConfigured ? modelName : 'intelligent engine'}...`,
+      time: timeStr
+    });
+
     renderAndUpdateThread();
 
-    // 2. Determine response type dynamically according to user query
-    showToast('SYBRAI AI analyzing query...', 'info', 1200);
-
-    // Check if matching preset scenario or keyword analysis
+    // Check if query matches a rich preset diagnostic scenario
     const lower = text.toLowerCase();
     let responsePayload = null;
 
@@ -608,27 +702,54 @@ function setupCopilotInteractions(screen) {
       responsePayload = PRESET_SCENARIOS['database-error'];
     }
 
-    // Try AI service (Gemini or OpenAI if configured)
-    let aiText = '';
-    const aiConfig = getAiConfig();
-
-    if (aiConfig.isConfigured) {
-      try {
-        aiText = await chatWithAi(text);
-      } catch (err) {
-        console.warn('AI service error:', err);
+    try {
+      let rawAiResponse = '';
+      if (aiConfig.isConfigured) {
+        rawAiResponse = await chatWithAi(text, conversation);
+      } else {
+        // Delay slightly for natural feel
+        await new Promise(r => setTimeout(r, 600));
+        if (responsePayload) {
+          rawAiResponse = responsePayload.aiText;
+        } else {
+          rawAiResponse = generateGeneralCodingAnswer(text);
+        }
       }
-    }
 
-    setTimeout(() => {
+      // Remove thinking message
+      conversation = conversation.filter(m => m.id !== thinkingId);
+
+      // Parse code blocks from AI response
+      const extracted = parseCodeFromAiResponse(rawAiResponse);
       const respTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      if (responsePayload) {
-        // Render rich intelligent card response tailored to query
+      if (extracted.hasCode) {
         conversation.push({
-          id: `msg-${Date.now() + 1}`,
+          id: `msg-${Date.now()}`,
           role: 'ai',
-          text: aiText || responsePayload.aiText,
+          text: extracted.cleanText,
+          time: respTime,
+          hasIssueCard: Boolean(responsePayload?.issueData),
+          issueData: responsePayload?.issueData || null,
+          hasFixCard: true,
+          fixData: {
+            isApplied: false,
+            safeBadge: 'Real AI Generated Fix',
+            file: extracted.language === 'java' ? 'MainActivity.java' : extracted.language === 'python' ? 'main.py' : 'index.js',
+            beforeCode: responsePayload?.fixData?.beforeCode || '// Existing code in file',
+            afterCode: extracted.code
+          },
+          followUps: responsePayload?.followUps || [
+            'How does this fix work?',
+            'Prevent this in future',
+            'Check for edge cases'
+          ]
+        });
+      } else if (responsePayload) {
+        conversation.push({
+          id: `msg-${Date.now()}`,
+          role: 'ai',
+          text: rawAiResponse || responsePayload.aiText,
           time: respTime,
           hasIssueCard: true,
           hasFixCard: true,
@@ -637,14 +758,14 @@ function setupCopilotInteractions(screen) {
           followUps: responsePayload.followUps
         });
       } else {
-        // General query response with explanation card & tips
         conversation.push({
-          id: `msg-${Date.now() + 1}`,
+          id: `msg-${Date.now()}`,
           role: 'ai',
-          text: aiText || generateGeneralCodingAnswer(text),
+          text: rawAiResponse,
           time: respTime,
           hasIssueCard: false,
           hasFixCard: false,
+          showKeyPrompt: !aiConfig.isConfigured,
           followUps: [
             'How does this fix work?',
             'Show code implementation',
@@ -652,9 +773,20 @@ function setupCopilotInteractions(screen) {
           ]
         });
       }
+    } catch (err) {
+      // Remove thinking message and show real error card with direct action
+      conversation = conversation.filter(m => m.id !== thinkingId);
+      conversation.push({
+        id: `msg-${Date.now()}`,
+        role: 'ai',
+        isError: true,
+        text: `**Live AI Connection Error**: ${err.message}\n\nPlease check your API key & model settings to continue chatting.`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
+      showToast('Live AI API Error: Check API key', 'error', 3000);
+    }
 
-      renderAndUpdateThread();
-    }, 600);
+    renderAndUpdateThread();
   };
 
   const renderAndUpdateThread = () => {
@@ -708,8 +840,9 @@ function setupCopilotInteractions(screen) {
   screen.querySelector('#copilot-new-btn')?.addEventListener('click', startNewChat);
   screen.querySelector('#drawer-new-chat-btn')?.addEventListener('click', startNewChat);
 
-  // --- Settings Button ---
+  // --- Settings & Real AI Status Banner ---
   screen.querySelector('#copilot-settings-btn')?.addEventListener('click', openAiSettingsModal);
+  screen.querySelector('#open-api-modal-btn')?.addEventListener('click', openAiSettingsModal);
 
   // --- Category Chips Bar ---
   screen.querySelectorAll('.copilot-filter-chip').forEach(chip => {
@@ -720,7 +853,6 @@ function setupCopilotInteractions(screen) {
       const scenario = chip.dataset.scenario;
       const q = chip.dataset.q;
       if (q === 'all') {
-        // Keep conversation as-is
         renderAndUpdateThread();
       } else if (scenario) {
         handleSend(PRESET_SCENARIOS[scenario].userText, scenario);
@@ -777,12 +909,12 @@ function attachMessageEvents(screen) {
 
   // 3. Diff Tab Bar (Before / After / Both)
   screen.querySelectorAll('.copilot-diff-tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
       activeTabDiff = tab;
 
       const parentBar = btn.closest('.copilot-diff-tab-bar');
-      parentBar.querySelectorAll('.copilot-diff-tab-btn').forEach(b => b.classList.remove('active'));
+      parentBar?.querySelectorAll('.copilot-diff-tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
       const fixCard = btn.closest('.copilot-fix-card');
@@ -791,7 +923,7 @@ function attachMessageEvents(screen) {
         const afterPane = fixCard.querySelector('.copilot-diff-pane--after');
         const grid = fixCard.querySelector('.copilot-diff-grid');
 
-        grid.className = `copilot-diff-grid copilot-diff-grid--${tab}`;
+        if (grid) grid.className = `copilot-diff-grid copilot-diff-grid--${tab}`;
         if (tab === 'both') {
           if (beforePane) beforePane.style.display = 'block';
           if (afterPane) afterPane.style.display = 'block';
@@ -861,6 +993,35 @@ function attachMessageEvents(screen) {
       }
     });
   });
+
+  // 7. Click to open API Key modal from inline prompt
+  screen.querySelectorAll('.copilot-api-key-invite, #btn-fix-api-key').forEach(el => {
+    el.addEventListener('click', openAiSettingsModal);
+  });
+}
+
+function parseCodeFromAiResponse(raw) {
+  if (!raw) return { cleanText: '', hasCode: false, code: '', language: 'javascript' };
+
+  const codeBlockMatch = raw.match(/```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    const language = (codeBlockMatch[1] || 'javascript').toLowerCase();
+    const code = codeBlockMatch[2].trim();
+    const cleanText = raw.replace(codeBlockMatch[0], '').trim();
+    return {
+      cleanText: cleanText || 'Here is the recommended solution:',
+      hasCode: true,
+      code,
+      language
+    };
+  }
+
+  return {
+    cleanText: raw,
+    hasCode: false,
+    code: '',
+    language: 'javascript'
+  };
 }
 
 function generateGeneralCodingAnswer(query) {
@@ -871,6 +1032,7 @@ function openFullDiffModal(msg) {
   const modalContainer = document.getElementById('modal-container');
   if (!modalContainer) return;
 
+  modalContainer.classList.add('visible');
   const before = msg?.fixData?.beforeCode || '// Original code';
   const after = msg?.fixData?.afterCode || '// Patched code';
   const file = msg?.fixData?.file || 'MainActivity.java';
@@ -906,7 +1068,10 @@ function openFullDiffModal(msg) {
   `;
 
   if (window.lucide) lucide.createIcons();
-  const close = () => { modalContainer.innerHTML = ''; };
+  const close = () => {
+    modalContainer.innerHTML = '';
+    modalContainer.classList.remove('visible');
+  };
   modalContainer.querySelector('#modal-diff-close')?.addEventListener('click', close);
   modalContainer.querySelector('#copilot-diff-backdrop')?.addEventListener('click', (e) => {
     if (e.target.id === 'copilot-diff-backdrop') close();
@@ -922,6 +1087,7 @@ function openAttachmentModal() {
   const modalContainer = document.getElementById('modal-container');
   if (!modalContainer) return;
 
+  modalContainer.classList.add('visible');
   modalContainer.innerHTML = `
     <div class="modal-backdrop active" id="copilot-attach-backdrop">
       <div class="modal-sheet" role="dialog">
@@ -964,7 +1130,10 @@ function openAttachmentModal() {
   `;
 
   if (window.lucide) lucide.createIcons();
-  const close = () => { modalContainer.innerHTML = ''; };
+  const close = () => {
+    modalContainer.innerHTML = '';
+    modalContainer.classList.remove('visible');
+  };
   modalContainer.querySelector('#modal-att-close')?.addEventListener('click', close);
   modalContainer.querySelector('#copilot-attach-backdrop')?.addEventListener('click', (e) => {
     if (e.target.id === 'copilot-attach-backdrop') close();
@@ -994,53 +1163,188 @@ function openAiSettingsModal() {
   const modalContainer = document.getElementById('modal-container');
   if (!modalContainer) return;
 
+  modalContainer.classList.add('visible');
   const current = getAiConfig();
+
+  const geminiModels = [
+    { id: 'gemini-1.5-flash', name: 'gemini-1.5-flash (Fast & Free Tier Recommended)' },
+    { id: 'gemini-2.0-flash', name: 'gemini-2.0-flash (Next-Gen Ultra Fast)' },
+    { id: 'gemini-1.5-pro', name: 'gemini-1.5-pro (Deep Reasoning & Large Context)' }
+  ];
+
+  const openaiModels = [
+    { id: 'gpt-4o-mini', name: 'gpt-4o-mini (Fast & Cost-Effective)' },
+    { id: 'gpt-4o', name: 'gpt-4o (Omni Flagship Model)' },
+    { id: 'gpt-4-turbo', name: 'gpt-4-turbo (High Intelligence)' }
+  ];
+
+  const getModelOptions = (prov) => {
+    const list = prov === 'openai' ? openaiModels : geminiModels;
+    return list.map(m => `
+      <option value="${m.id}" ${current.model === m.id ? 'selected' : ''}>${m.name}</option>
+    `).join('');
+  };
 
   modalContainer.innerHTML = `
     <div class="modal-backdrop active" id="copilot-ai-backdrop">
-      <div class="modal-sheet" role="dialog">
+      <div class="modal-sheet" role="dialog" style="max-height:90vh; overflow-y:auto;">
         <div class="modal-sheet__handle"></div>
         <div class="modal-sheet__header">
           <h2 class="modal-sheet__title">
-            <i data-lucide="sparkles" style="color:var(--color-primary);"></i> AI Engine Settings
+            <i data-lucide="sparkles" style="color:var(--color-primary);"></i> Connect Real AI API Key
           </h2>
           <button class="modal-sheet__close" id="modal-c-close" aria-label="Close">
             <i data-lucide="x"></i>
           </button>
         </div>
-        <div class="modal-sheet__body">
-          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Provider</label>
-          <select id="cfg-ai-p" class="form-select" style="width:100%; padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); margin-bottom:12px;">
-            <option value="gemini" ${current.provider === 'gemini' ? 'selected' : ''}>Google Gemini (Recommended)</option>
-            <option value="openai" ${current.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+        <div class="modal-sheet__body" style="padding:16px;">
+          <!-- Provider -->
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">AI Provider</label>
+          <select id="cfg-ai-p" class="form-select" style="width:100%; padding:9px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); margin-bottom:8px; font-weight:600;">
+            <option value="gemini" ${current.provider === 'gemini' ? 'selected' : ''}>Google Gemini (Free Tier Available)</option>
+            <option value="openai" ${current.provider === 'openai' ? 'selected' : ''}>OpenAI (ChatGPT / GPT-4o)</option>
           </select>
 
-          <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Model</label>
-          <select id="cfg-ai-m" class="form-select" style="width:100%; padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); margin-bottom:12px;">
-            <option value="gemini-2.0-flash" ${current.model === 'gemini-2.0-flash' ? 'selected' : ''}>gemini-2.0-flash (Next-Gen Fast)</option>
-            <option value="gemini-1.5-pro" ${current.model === 'gemini-1.5-pro' ? 'selected' : ''}>gemini-1.5-pro (Deep Reasoning)</option>
-            <option value="gpt-5.6-luna" ${current.model === 'gpt-5.6-luna' ? 'selected' : ''}>gpt-5.6-luna (OpenAI Luna)</option>
+          <!-- Free Key Help Banner -->
+          <div id="cfg-help-box" style="padding:8px 10px; border-radius:10px; background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.2); font-size:11px; color:var(--color-text-secondary); margin-bottom:12px; line-height:1.35;">
+            <span id="cfg-help-text">
+              ✨ <strong>Google Gemini Free Key:</strong> Get your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:#2563EB; font-weight:700; text-decoration:underline;">Google AI Studio</a>. No credit card needed!
+            </span>
+          </div>
+
+          <!-- Model -->
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Model</label>
+          <select id="cfg-ai-m" class="form-select" style="width:100%; padding:9px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); margin-bottom:14px; font-size:12px;">
+            ${getModelOptions(current.provider)}
           </select>
 
-          <button class="btn btn--primary btn--full" id="save-c-ai-btn" style="padding:11px; font-weight:600;">
-            <i data-lucide="check"></i> Save & Connect
+          <!-- API Key Input -->
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">API Key</label>
+          <div style="position:relative; margin-bottom:12px;">
+            <input type="password" id="cfg-ai-key" value="${escapeHtml(current.apiKey || '')}" placeholder="Paste API Key (e.g. AIzaSy... or sk-...)" style="width:100%; padding:9px 38px 9px 12px; font-family:var(--font-mono); font-size:12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface);" autocomplete="off" />
+            <button type="button" id="cfg-ai-toggle-eye" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--color-text-tertiary); cursor:pointer; padding:4px;" title="Show/Hide Key">
+              <i data-lucide="eye" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+
+          <!-- Test Connection Status Area -->
+          <div id="cfg-test-status" style="display:none; padding:8px 12px; border-radius:10px; font-size:11.5px; font-weight:600; margin-bottom:12px;"></div>
+
+          <!-- Action Buttons -->
+          <button class="btn btn--secondary btn--full" id="test-c-ai-btn" style="padding:10px; margin-bottom:8px; font-weight:600; gap:6px;">
+            <i data-lucide="activity"></i>
+            <span>Test API Connection</span>
           </button>
+
+          <button class="btn btn--primary btn--full" id="save-c-ai-btn" style="padding:11px; font-weight:700; gap:6px;">
+            <i data-lucide="check-circle"></i>
+            <span>Save & Connect Real AI</span>
+          </button>
+
+          ${current.apiKey ? `
+            <button id="clear-c-ai-btn" style="background:none; border:none; color:#EF4444; font-size:11px; font-weight:600; margin-top:12px; cursor:pointer; text-align:center; width:100%;">
+              Clear Stored API Key
+            </button>
+          ` : ''}
         </div>
       </div>
     </div>
   `;
 
   if (window.lucide) lucide.createIcons();
-  const close = () => { modalContainer.innerHTML = ''; };
+  const close = () => {
+    modalContainer.innerHTML = '';
+    modalContainer.classList.remove('visible');
+  };
   modalContainer.querySelector('#modal-c-close')?.addEventListener('click', close);
   modalContainer.querySelector('#copilot-ai-backdrop')?.addEventListener('click', (e) => {
     if (e.target.id === 'copilot-ai-backdrop') close();
   });
+
+  const providerSelect = modalContainer.querySelector('#cfg-ai-p');
+  const modelSelect = modalContainer.querySelector('#cfg-ai-m');
+  const helpText = modalContainer.querySelector('#cfg-help-text');
+  const keyInput = modalContainer.querySelector('#cfg-ai-key');
+  const toggleEye = modalContainer.querySelector('#cfg-ai-toggle-eye');
+  const statusEl = modalContainer.querySelector('#cfg-test-status');
+
+  // Eye toggle
+  toggleEye?.addEventListener('click', () => {
+    const isPass = keyInput.type === 'password';
+    keyInput.type = isPass ? 'text' : 'password';
+    toggleEye.innerHTML = `<i data-lucide="${isPass ? 'eye-off' : 'eye'}" style="width:16px;height:16px;"></i>`;
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // Provider change
+  providerSelect?.addEventListener('change', () => {
+    const prov = providerSelect.value;
+    modelSelect.innerHTML = getModelOptions(prov);
+    if (prov === 'openai') {
+      helpText.innerHTML = `✨ <strong>OpenAI Key:</strong> Get your secret key from your <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" style="color:#2563EB; font-weight:700; text-decoration:underline;">OpenAI Dashboard</a>.`;
+      keyInput.placeholder = 'Paste OpenAI Key (sk-...)';
+    } else {
+      helpText.innerHTML = `✨ <strong>Google Gemini Free Key:</strong> Get your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:#2563EB; font-weight:700; text-decoration:underline;">Google AI Studio</a>. No credit card needed!`;
+      keyInput.placeholder = 'Paste Gemini Key (AIzaSy...)';
+    }
+  });
+
+  // Test Connection
+  modalContainer.querySelector('#test-c-ai-btn')?.addEventListener('click', async () => {
+    const apiKey = keyInput.value.trim();
+    const provider = providerSelect.value;
+    const model = modelSelect.value;
+
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(37,99,235,0.1)';
+    statusEl.style.color = '#2563EB';
+    statusEl.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Testing live connection with ${provider}...`;
+    if (window.lucide) lucide.createIcons();
+
+    const result = await testAiConnection({ apiKey, provider, model });
+    if (result.success) {
+      statusEl.style.background = 'rgba(16,185,129,0.12)';
+      statusEl.style.color = '#065F46';
+      statusEl.innerHTML = `<i data-lucide="check-circle" style="color:#10B981;"></i> ${escapeHtml(result.message)}`;
+      showToast('Live connection verified! ✨', 'success', 2000);
+    } else {
+      statusEl.style.background = 'rgba(239,68,68,0.12)';
+      statusEl.style.color = '#991B1B';
+      statusEl.innerHTML = `<i data-lucide="x-circle" style="color:#EF4444;"></i> ${escapeHtml(result.message)}`;
+      showToast('Connection failed: Check key', 'error', 3000);
+    }
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // Save & Connect
   modalContainer.querySelector('#save-c-ai-btn')?.addEventListener('click', () => {
-    const provider = modalContainer.querySelector('#cfg-ai-p').value;
-    const model = modalContainer.querySelector('#cfg-ai-m').value;
-    saveAiConfig({ provider, model });
-    showToast('AI Engine configured successfully! ⚡', 'success', 1500);
+    const provider = providerSelect.value;
+    const model = modelSelect.value;
+    const apiKey = keyInput.value.trim();
+
+    saveAiConfig({ provider, model, apiKey });
+    showToast('AI Model & Key updated! ⚡', 'success', 2000);
+
+    // Update the on-screen status banner in real-time
+    const banner = document.getElementById('copilot-api-status-banner');
+    if (banner) {
+      banner.innerHTML = renderAiStatusBar();
+      banner.querySelector('#open-api-modal-btn')?.addEventListener('click', openAiSettingsModal);
+      if (window.lucide) lucide.createIcons();
+    }
+    close();
+  });
+
+  // Clear Key
+  modalContainer.querySelector('#clear-c-ai-btn')?.addEventListener('click', () => {
+    saveAiConfig({ apiKey: '' });
+    showToast('API Key removed.', 'info', 1500);
+    const banner = document.getElementById('copilot-api-status-banner');
+    if (banner) {
+      banner.innerHTML = renderAiStatusBar();
+      banner.querySelector('#open-api-modal-btn')?.addEventListener('click', openAiSettingsModal);
+      if (window.lucide) lucide.createIcons();
+    }
     close();
   });
 }

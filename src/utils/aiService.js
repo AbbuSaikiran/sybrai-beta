@@ -6,28 +6,102 @@
 // Read from Vite define, import.meta.env, or saved localStorage configuration
 export function getAiConfig() {
   const envConfig = (typeof __AI_ENV__ !== 'undefined') ? __AI_ENV__ : {};
-  const localApiKey = localStorage.getItem('sybrai_ai_api_key');
-  const localModel = localStorage.getItem('sybrai_ai_model');
-  const localProvider = localStorage.getItem('sybrai_ai_provider');
+  const hasLocalStorage = typeof localStorage !== 'undefined';
+  const localApiKey = hasLocalStorage ? localStorage.getItem('sybrai_ai_api_key') : null;
+  const localModel = hasLocalStorage ? localStorage.getItem('sybrai_ai_model') : null;
+  const localProvider = hasLocalStorage ? localStorage.getItem('sybrai_ai_provider') : null;
 
-  const apiKey = localApiKey || envConfig.apiKey || import.meta.env.VITE_AI_API_KEY || '';
-  const model = localModel || envConfig.model || import.meta.env.VITE_AI_MODEL || 'gemini-1.5-flash';
-  const provider = localProvider || envConfig.provider || import.meta.env.VITE_AI_PROVIDER || 'gemini';
-  const baseUrl = envConfig.baseUrl || import.meta.env.VITE_AI_BASE_URL || '';
+  let apiKey = (localApiKey || envConfig.apiKey || (typeof process !== 'undefined' && process.env?.VITE_AI_API_KEY) || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AI_API_KEY) || '').trim();
+  let provider = (localProvider || envConfig.provider || (typeof process !== 'undefined' && process.env?.VITE_AI_PROVIDER) || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AI_PROVIDER) || 'openai').trim().toLowerCase();
+
+  // Smart provider auto-detection based on API key prefix
+  if (apiKey.startsWith('sk-')) {
+    provider = 'openai';
+  } else if (apiKey.startsWith('AIza')) {
+    provider = 'gemini';
+  }
+
+  const defaultModel = provider === 'openai' ? 'gpt-5.6-luna' : 'gemini-1.5-flash';
+  const model = (localModel || envConfig.model || (typeof process !== 'undefined' && process.env?.VITE_AI_MODEL) || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AI_MODEL) || defaultModel).trim();
+  const baseUrl = (envConfig.baseUrl || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AI_BASE_URL) || '').trim();
 
   return {
-    apiKey: apiKey.trim(),
-    model: model.trim(),
-    provider: provider.trim().toLowerCase(),
-    baseUrl: baseUrl.trim(),
-    isConfigured: Boolean(apiKey && apiKey.trim().length > 5 && !apiKey.includes('your_api_key')),
+    apiKey,
+    model,
+    provider,
+    baseUrl,
+    isConfigured: Boolean(apiKey && apiKey.length > 5 && !apiKey.includes('your_api_key')),
   };
 }
 
 export function saveAiConfig({ apiKey, model, provider }) {
+  if (typeof localStorage === 'undefined') return;
   if (apiKey !== undefined) localStorage.setItem('sybrai_ai_api_key', apiKey.trim());
   if (model !== undefined) localStorage.setItem('sybrai_ai_model', model.trim());
-  if (provider !== undefined) localStorage.setItem('sybrai_ai_provider', provider.trim());
+  if (provider !== undefined) localStorage.setItem('sybrai_ai_provider', provider.trim().toLowerCase());
+}
+
+/**
+ * Live test connection with provided API key and model
+ */
+export async function testAiConnection({ apiKey, provider, model }) {
+  const key = (apiKey || '').trim();
+  let prov = (provider || (key.startsWith('sk-') ? 'openai' : 'gemini')).toLowerCase();
+  const mod = model || (prov === 'openai' ? 'gpt-5.6-luna' : 'gemini-1.5-flash');
+
+  if (!key || key.length < 5) {
+    return { success: false, message: 'Please enter a valid API key.' };
+  }
+
+  try {
+    if (prov === 'openai') {
+      const isNewMod = mod.startsWith('o') || mod.includes('luna') || mod.includes('sol') || mod.includes('terra') || mod.includes('5') || mod.includes('4o');
+      const isStrictTemp = mod.startsWith('o') || mod.includes('luna') || mod.includes('sol') || mod.includes('terra') || mod.includes('gpt-5');
+      
+      const payload = {
+        model: mod,
+        messages: [{ role: 'user', content: 'Ping' }],
+        ...(isNewMod ? { max_completion_tokens: 10 } : { max_tokens: 10 })
+      };
+      if (!isStrictTemp) {
+        payload.temperature = 0.7;
+      }
+
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const errMsg = err.error?.message || `HTTP ${res.status}`;
+        return { success: false, message: errMsg };
+      }
+      return { success: true, message: `Connected to OpenAI (${mod}) successfully!` };
+    } else {
+      // Google Gemini
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${mod}:generateContent?key=${key}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'Ping' }] }],
+          generationConfig: { maxOutputTokens: 5 }
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const errMsg = err.error?.message || `HTTP ${res.status}`;
+        return { success: false, message: errMsg };
+      }
+      return { success: true, message: `Connected to Google Gemini (${mod}) successfully!` };
+    }
+  } catch (e) {
+    return { success: false, message: e.message || 'Network connection failed' };
+  }
 }
 
 /**
@@ -48,8 +122,8 @@ export async function chatWithAi(prompt, history = []) {
       return await callGemini(config, prompt, history);
     }
   } catch (error) {
-    console.warn('[SYBRAI AI Service] API call failed, using intelligent fallback:', error);
-    return `${generateFallbackResponse(prompt)}\n\n*(Note: AI API call encountered an error: ${error.message}. Please check your API key & model in .env or settings)*`;
+    console.warn('[SYBRAI AI Service] API call failed:', error);
+    throw error;
   }
 }
 
@@ -62,14 +136,17 @@ async function callGemini(config, prompt, history = []) {
 
   const contents = [];
 
-  // Add system instruction context (Cybersecurity & AppSec Specialist)
-  const systemInstruction = `You are SYBRAI CyberSec AI — an autonomous Cybersecurity, DevSecOps, and Application Vulnerability Specialist.
-You detect OWASP Top 10 vulnerabilities (CWE-89 SQLi, CWE-79 XSS, CWE-798 Hardcoded Secrets, CWE-918 SSRF, Broken Authentication, CORS flaws, and Memory safety exploits).
-Always provide:
-1. 🛡️ Threat Assessment with CVSS Severity Rating (Critical / High / Medium / Low).
-2. 🔍 Exploit Vector & Root Cause.
-3. ⚡ Hardened Code Remediation with copyable patch.
-Format cleanly with markdown and code snippets for mobile screens.`;
+  // Add system instruction context (Coding Assistant, Bug Fixer & Security)
+  const systemInstruction = `You are SYBRAI AI — an intelligent coding assistant, bug fixer, and analyzer (Ask. Analyze. Fix. Learn.).
+Your role is to diagnose code bugs, analyze logs, optimize performance, and harden security.
+When responding:
+1. Explain the root cause clearly in 1-2 concise paragraphs.
+2. If there is a code fix or recommendation, provide the complete, ready-to-use code in a markdown code block:
+\`\`\`<language>
+// patched code
+\`\`\`
+3. Provide 2-3 brief bullet points explaining why the fix works and best practices.
+Keep responses practical, concise, and developer-friendly.`;
 
   // Add conversation history
   history.slice(-6).forEach(msg => {
@@ -91,7 +168,7 @@ Format cleanly with markdown and code snippets for mobile screens.`;
     },
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 1000,
+      maxOutputTokens: 1200,
     }
   };
 
@@ -117,47 +194,17 @@ Format cleanly with markdown and code snippets for mobile screens.`;
  * OpenAI API integration
  */
 async function callOpenAi(config, prompt, history = []) {
-  const model = config.model || 'gpt-5.6-luna';
-
-  // Support modern OpenAI Responses API (e.g. gpt-5.6-luna, responses.create)
-  if (model.includes('luna') || model.startsWith('gpt-5') || config.baseUrl?.includes('responses')) {
-    try {
-      const respUrl = config.baseUrl || 'https://api.openai.com/v1/responses';
-      const response = await fetch(respUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          input: prompt,
-          store: true,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const extracted = extractResponseText(result);
-        if (extracted) return extracted;
-      }
-    } catch (e) {
-      console.warn('[OpenAI Responses API] Fallback to chat completions:', e);
-    }
-  }
-
-  // Standard chat completions endpoint
+  const primaryModel = config.model || 'gpt-5.6-luna';
   const endpoint = config.baseUrl || 'https://api.openai.com/v1/chat/completions';
   const messages = [
     {
       role: 'system',
-      content: `You are SYBRAI CyberSec AI — an autonomous Cybersecurity, DevSecOps, and Application Vulnerability Specialist.
-Analyze code for OWASP Top 10 vulnerabilities (CWE-89 SQLi, CWE-79 XSS, CWE-798 Hardcoded Secrets, CWE-918 SSRF, Broken Auth, CORS flaws, and Memory safety exploits).
-Always provide:
-1. 🛡️ Threat Assessment with CVSS Severity Rating (Critical / High / Medium / Low).
-2. 🔍 Exploit Vector & Root Cause.
-3. ⚡ Hardened Code Remediation with copyable patch.
-Be concise and practical for mobile developers.`
+      content: `You are SYBRAI AI — an intelligent autonomous cybersecurity assistant, bug fixer, and mobile device defense controller (Ask. Analyze. Fix. Learn.).
+Diagnose code bugs, analyze logs, optimize performance, safeguard mobile device telemetry, and harden application security.
+When responding:
+1. Explain the root cause or security assessment clearly in 1-2 concise paragraphs.
+2. If there is a code fix or command, provide it in a clean markdown code block.
+3. Provide 2-3 brief actionable bullet points explaining why the action works and security best practices.`
     },
     ...history.slice(-6).map(m => ({
       role: m.type === 'user' ? 'user' : 'assistant',
@@ -166,37 +213,76 @@ Be concise and practical for mobile developers.`
     { role: 'user', content: prompt },
   ];
 
-  const isReasoningModel = model.includes('luna') || model.startsWith('gpt-5') || model.startsWith('o1') || model.startsWith('o3');
+  const buildPayload = (targetModel, useCompletionTokens) => {
+    // Models that reject custom temperature (gpt-5*, luna, sol, terra, o1, o3, etc.)
+    const isStrictModel = targetModel.startsWith('o') || 
+                          targetModel.includes('luna') || 
+                          targetModel.includes('sol') || 
+                          targetModel.includes('terra') || 
+                          targetModel.includes('gpt-5');
 
-  const requestBody = {
-    model,
-    messages,
+    const payload = {
+      model: targetModel,
+      messages,
+      ...(useCompletionTokens ? { max_completion_tokens: 1500 } : { max_tokens: 1500 }),
+    };
+
+    if (!isStrictModel) {
+      payload.temperature = 0.7;
+    }
+    return payload;
   };
 
-  if (isReasoningModel) {
-    // Reasoning models (gpt-5.6-luna, o1, o3) require max_completion_tokens and do not allow custom temperature
-    requestBody.max_completion_tokens = 1200;
-  } else {
-    requestBody.max_tokens = 800;
-    requestBody.temperature = 0.7;
+  const executeRequest = async (targetModel) => {
+    const isNew = targetModel.startsWith('o') || targetModel.includes('luna') || targetModel.includes('5') || targetModel.includes('4o');
+    let response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(buildPayload(targetModel, isNew)),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const errMsg = errData.error?.message || `HTTP ${response.status}`;
+
+      // If token parameter mismatch occurs, retry with alternate token property
+      if (errMsg.includes('max_completion_tokens') || errMsg.includes('max_tokens')) {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.apiKey}`,
+          },
+          body: JSON.stringify(buildPayload(targetModel, !isNew)),
+        });
+        if (response.ok) {
+          const retryData = await response.json();
+          return retryData.choices?.[0]?.message?.content || 'No response generated.';
+        }
+      }
+      throw new Error(errMsg);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'No response generated.';
+  };
+
+  try {
+    return await executeRequest(primaryModel);
+  } catch (err) {
+    console.warn(`[SYBRAI AI] Primary model ${primaryModel} request failed: ${err.message}. Attempting fallback to gpt-4o-mini...`);
+    if (primaryModel !== 'gpt-4o-mini') {
+      try {
+        return await executeRequest('gpt-4o-mini');
+      } catch (fallbackErr) {
+        throw new Error(`OpenAI error: ${err.message}`);
+      }
+    }
+    throw err;
   }
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || 'No response generated.';
 }
 
 function extractResponseText(result) {

@@ -1,12 +1,15 @@
 // ============================================
-// SYBRAI — Records Screen
+// SYBRAI — Records Screen (Live Scan History)
+// Powered by real-time scan engine data
 // ============================================
 
-import { sessions } from '../data/mockData.js';
+import { getScanHistory } from '../utils/scanEngine.js';
 
 export function renderRecords() {
   const screen = document.createElement('div');
   screen.className = 'screen screen--records';
+
+  const sessions = getScanHistory();
 
   screen.innerHTML = `
     <div class="top-app-bar">
@@ -46,16 +49,16 @@ function renderRecordsList(items) {
     return `
       <div class="empty-state">
         <i data-lucide="folder-open" class="empty-state__icon"></i>
-        <div class="empty-state__title">No records found</div>
-        <div class="empty-state__desc">Records matching your filter will appear here.</div>
+        <div class="empty-state__title">No scan records yet</div>
+        <div class="empty-state__desc">Run a security scan from the Home page to see records here.</div>
       </div>
     `;
   }
   return items.map(s => `
     <div class="session-item" role="button" tabindex="0">
-      <div class="session-item__dot session-item__dot--${s.dot}"></div>
+      <div class="session-item__dot session-item__dot--${s.dot || 'fixed'}"></div>
       <div class="session-item__content">
-        <div class="session-item__title">${s.title}</div>
+        <div class="session-item__title">${s.title}${s.score !== undefined ? ` <span style="font-size:10px;color:var(--color-text-tertiary);font-family:var(--font-mono);">(${s.score}/100)</span>` : ''}</div>
         <div class="session-item__time">${s.time}</div>
       </div>
       <span class="session-item__badge session-item__badge--${s.status}">
@@ -73,6 +76,7 @@ function setupRecordsFilter() {
       chips.forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       const filter = chip.dataset.filter;
+      const sessions = getScanHistory();
       const filtered = filter === 'all' ? sessions : sessions.filter(s => s.status === filter);
       list.innerHTML = renderRecordsList(filtered);
       if (window.lucide) lucide.createIcons();

@@ -9,6 +9,7 @@ import { renderSplash } from './screens/Splash.js';
 import { renderHome } from './screens/Home.js';
 import { renderAnalysis } from './screens/Analysis.js';
 import { renderRecords } from './screens/Records.js';
+import { renderLearning } from './screens/Learning.js';
 import { renderCopilot } from './screens/Copilot.js';
 import { renderProfile } from './screens/Profile.js';
 import { renderNotifications } from './screens/Notifications.js';
@@ -20,9 +21,9 @@ initTheme();
 const tabs = [
   { id: 'home', label: 'Home', icon: 'home', route: '/home' },
   { id: 'analysis', label: 'Analysis', icon: 'bar-chart-2', route: '/analysis' },
-  { id: 'records', label: 'Records', icon: 'folder', route: '/records' },
-  { id: 'learning', label: 'Learning', icon: 'book-open', route: '/copilot' },
-  { id: 'profile', label: 'Profile', icon: 'user', route: '/profile' },
+  { id: 'chat', label: 'AI Chat', icon: 'message-square', route: '/chat' },
+  { id: 'learning', label: 'Learning', icon: 'book-open', route: '/learning' },
+  { id: 'records', label: 'Records', icon: 'file-text', route: '/records' },
 ];
 
 // ---- Build Bottom Tab Bar ----
@@ -74,15 +75,22 @@ function updateTabBarVisibility(route) {
 registerRoute('/', renderSplash);
 registerRoute('/home', renderHome);
 registerRoute('/analysis', renderAnalysis);
-registerRoute('/records', renderRecords);
+registerRoute('/chat', renderCopilot);
 registerRoute('/copilot', renderCopilot);
+registerRoute('/learning', renderLearning);
+registerRoute('/records', renderRecords);
 registerRoute('/profile', renderProfile);
 registerRoute('/notifications', renderNotifications);
 
 // ---- Route Change Handler ----
 setOnRouteChange((route) => {
+  const routeAliases = {
+    '/copilot': '/chat',
+    '/ai': '/chat',
+  };
+  const normalizedRoute = routeAliases[route] || route;
   updateTabBarVisibility(route);
-  updateActiveTab(route);
+  updateActiveTab(normalizedRoute);
 
   // Re-initialize Lucide icons after route change
   setTimeout(() => {

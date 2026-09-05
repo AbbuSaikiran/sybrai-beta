@@ -4,11 +4,18 @@
 // ============================================
 
 export const userProfile = {
-  name: 'John Developer',
-  email: 'john.dev@email.com',
-  initials: 'JD',
+  name: 'Abbu Saikiran',
+  email: 'info@sybrai.com',
+  initials: 'AS',
   badge: 'Pro User',
-  avatar: null,
+  tagline: 'Building secure apps with AI 🚀',
+  avatar: '/avatar.jpg',
+  stats: {
+    analyses: 24,
+    issuesFixed: 18,
+    projects: 5,
+    avgScore: 92
+  }
 };
 
 export const chatConversation = [

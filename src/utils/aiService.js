@@ -111,9 +111,37 @@ async function callGemini(config, prompt, history = []) {
  * OpenAI API integration
  */
 async function callOpenAi(config, prompt, history = []) {
-  const endpoint = config.baseUrl || 'https://api.openai.com/v1/chat/completions';
-  const model = config.model || 'gpt-4o-mini';
+  const model = config.model || 'gpt-5.6-luna';
 
+  // Support modern OpenAI Responses API (e.g. gpt-5.6-luna, responses.create)
+  if (model.includes('luna') || model.startsWith('gpt-5') || config.baseUrl?.includes('responses')) {
+    try {
+      const respUrl = config.baseUrl || 'https://api.openai.com/v1/responses';
+      const response = await fetch(respUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          input: prompt,
+          store: true,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.output_text) return result.output_text;
+        if (result.output && typeof result.output === 'string') return result.output;
+      }
+    } catch (e) {
+      console.warn('[OpenAI Responses API] Fallback to chat completions:', e);
+    }
+  }
+
+  // Standard chat completions endpoint
+  const endpoint = config.baseUrl || 'https://api.openai.com/v1/chat/completions';
   const messages = [
     { role: 'system', content: 'You are SYBRAI, an AI Bug Fixer and Code Analyzer for mobile developers. Be concise and practical.' },
     ...history.slice(-6).map(m => ({

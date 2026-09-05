@@ -168,10 +168,11 @@ function openAiConfigModal() {
 
           <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">AI Model</label>
           <select id="cfg-model" class="form-select" style="width:100%; padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); margin-bottom: var(--space-md);">
-            <option value="gemini-1.5-flash" ${current.model === 'gemini-1.5-flash' ? 'selected' : ''}>gemini-1.5-flash (Fast & lightweight)</option>
+            <option value="gpt-5.6-luna" ${current.model === 'gpt-5.6-luna' ? 'selected' : ''}>gpt-5.6-luna (OpenAI Luna)</option>
+            <option value="gpt-4o-mini" ${current.model === 'gpt-4o-mini' ? 'selected' : ''}>gpt-4o-mini (OpenAI)</option>
+            <option value="gemini-1.5-flash" ${current.model === 'gemini-1.5-flash' ? 'selected' : ''}>gemini-1.5-flash (Google)</option>
             <option value="gemini-2.0-flash" ${current.model === 'gemini-2.0-flash' ? 'selected' : ''}>gemini-2.0-flash (Next-Gen)</option>
             <option value="gemini-1.5-pro" ${current.model === 'gemini-1.5-pro' ? 'selected' : ''}>gemini-1.5-pro (Deep reasoning)</option>
-            <option value="gpt-4o-mini" ${current.model === 'gpt-4o-mini' ? 'selected' : ''}>gpt-4o-mini (OpenAI)</option>
           </select>
 
           <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">API Key</label>

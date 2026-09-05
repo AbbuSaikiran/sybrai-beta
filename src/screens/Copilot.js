@@ -7,7 +7,7 @@
 
 import { showToast } from '../utils/toast.js';
 import { getAiConfig } from '../utils/aiService.js';
-import { runCyberAgentWorkflow } from '../utils/cyberAgentsSdk.js';
+import { runCyberAgentWorkflow, applyPatchTool } from '../utils/cyberAgentsSdk.js';
 
 let conversationHistory = [
   {
@@ -44,11 +44,11 @@ export function renderCopilot() {
       </div>
     </div>
 
-    <!-- Active Specialist Agents Status Bar -->
-    <div style="display:flex; align-items:center; justify-content:space-between; padding: 6px 16px; background: rgba(37,99,235,0.06); border-bottom: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary);">
+    <!-- Active Specialist Agents & Tools Status Bar -->
+    <div style="display:flex; align-items:center; justify-content:space-between; padding: 6px 16px; background: rgba(37,99,235,0.06); border-bottom: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary); flex-wrap: wrap; gap: 4px;">
       <div style="display:flex; align-items:center; gap: 6px;">
         <span style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display:inline-block;"></span>
-        <span>Specialists: <strong>Auditor</strong> | <strong>Defense</strong> | <strong>Incident</strong></span>
+        <span>Tools: <code style="font-size:10px; color:var(--color-primary);">apply_patch</code> | <code style="font-size:10px; color:#10B981;">web_search</code> | <code style="font-size:10px; color:#F59E0B;">mcp</code> | <code style="font-size:10px; color:#8B5CF6;">async</code></span>
       </div>
       <span class="badge badge--secure" style="font-size: 9px;">Guardrails ON</span>
     </div>
@@ -59,30 +59,30 @@ export function renderCopilot() {
 
     <!-- CyberSec Quick-Action Pills -->
     <div class="cyber-pill-bar">
-      <button class="cyber-pill" data-prompt="Audit this codebase for OWASP Top 10 vulnerabilities">
-        <i data-lucide="shield-alert" style="width:12px;height:12px;color:#EF4444;"></i>
-        <span>Scan OWASP Risks</span>
+      <button class="cyber-pill" data-prompt="Propose and apply patch for SQL injection in src/controllers/auth.js">
+        <i data-lucide="git-pull-request" style="width:12px;height:12px;color:#10B981;"></i>
+        <span>apply_patch (SQLi)</span>
       </button>
-      <button class="cyber-pill" data-prompt="Check for hardcoded API keys, JWT tokens, or credentials">
-        <i data-lucide="key-round" style="width:12px;height:12px;color:#F59E0B;"></i>
-        <span>Detect Leaked Keys</span>
+      <button class="cyber-pill" data-prompt="Search live threat intel on Log4j CVE-2021-44228 and NVD score">
+        <i data-lucide="globe" style="width:12px;height:12px;color:#3B82F6;"></i>
+        <span>web_search (CVE Intel)</span>
       </button>
-      <button class="cyber-pill" data-prompt="How to fix SQL injection and XSS vulnerabilities in our routes?">
-        <i data-lucide="zap" style="width:12px;height:12px;color:#3B82F6;"></i>
-        <span>Fix SQLi / XSS</span>
+      <button class="cyber-pill" data-prompt="Run remote MCP cloud posture and repository secret scanner">
+        <i data-lucide="server" style="width:12px;height:12px;color:#F59E0B;"></i>
+        <span>Remote MCP Server</span>
       </button>
-      <button class="cyber-pill" data-prompt="Harden CORS policy, CSP headers, and cookie security">
-        <i data-lucide="lock" style="width:12px;height:12px;color:#10B981;"></i>
-        <span>Harden Headers</span>
+      <button class="cyber-pill" data-prompt="Start background async SAST scan across the repository">
+        <i data-lucide="timer" style="width:12px;height:12px;color:#8B5CF6;"></i>
+        <span>Async SAST Scan</span>
       </button>
       <button class="cyber-pill" data-prompt="Trigger a critical security alert push notification to my mobile device">
-        <i data-lucide="bell" style="width:12px;height:12px;color:#8B5CF6;"></i>
-        <span>Trigger Mobile Alert</span>
+        <i data-lucide="bell" style="width:12px;height:12px;color:#EF4444;"></i>
+        <span>Mobile Push Alert</span>
       </button>
     </div>
 
     <div class="chat-input-bar">
-      <input class="chat-input-bar__field" id="copilot-input" type="text" placeholder="Ask CyberSec AI (e.g. Audit login route for SQLi)..." aria-label="Ask CyberSec AI" />
+      <input class="chat-input-bar__field" id="copilot-input" type="text" placeholder="Ask CyberSec AI (e.g. Apply patch for SQLi)..." aria-label="Ask CyberSec AI" />
       <button class="chat-input-bar__btn chat-input-bar__btn--send" id="copilot-send" aria-label="Send message">
         <i data-lucide="arrow-up"></i>
       </button>
@@ -94,7 +94,7 @@ export function renderCopilot() {
 }
 
 function renderCopilotMessages(messages) {
-  return messages.map(msg => {
+  return messages.map((msg, idx) => {
     if (msg.type === 'ai') {
       return `
         <div class="message-row message-row--ai">
@@ -108,6 +108,7 @@ function renderCopilotMessages(messages) {
               </div>
             ` : ''}
             ${formatText(msg.text)}
+            ${msg.patchOperation ? renderPatchCardHtml(msg.patchOperation, idx) : ''}
           </div>
         </div>
       `;
@@ -120,6 +121,44 @@ function renderCopilotMessages(messages) {
         </div>
       `;
     }
+  }).join('');
+}
+
+function renderPatchCardHtml(patch, id = 0) {
+  return `
+    <div class="cyber-patch-card" id="patch-card-${id}" style="margin-top: 10px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px; font-family: var(--font-mono); font-size: 11px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+        <span style="display:flex; align-items:center; gap: 5px; color: #38BDF8; font-weight:700;">
+          <i data-lucide="git-commit" style="width:13px;height:13px;"></i> apply_patch :: ${patch.type}
+        </span>
+        <span class="badge badge--critical" style="font-size:9px;">${patch.cvss ? `CVSS ${patch.cvss}` : 'SECURITY'}</span>
+      </div>
+      <div style="color: #94A3B8; font-size:10px; margin-bottom: 6px;">Target: <code>${patch.path}</code></div>
+      ${patch.vulnTitle ? `<div style="color: #F87171; font-weight:600; font-size:10px; margin-bottom: 8px;">⚠️ ${patch.vulnTitle}</div>` : ''}
+      <pre style="background: #090D16; color: #E2E8F0; padding: 8px; border-radius: 4px; overflow-x: auto; margin: 6px 0; border: 1px solid rgba(255,255,255,0.06); font-size: 10px; line-height: 1.4;"><code>${formatDiff(patch.diff)}</code></pre>
+      <div style="display:flex; gap: 6px; margin-top: 8px;">
+        <button class="btn btn--primary patch-apply-btn" data-patch-id="${id}" style="flex:1; font-size:11px; padding:6px 10px; background:#10B981; border-color:#10B981;">
+          <i data-lucide="check" style="width:12px;height:12px;"></i> Apply Hotpatch
+        </button>
+        <button class="btn btn--secondary patch-copy-btn" data-diff="${encodeURIComponent(patch.diff)}" style="font-size:11px; padding:6px 10px;">
+          <i data-lucide="copy" style="width:12px;height:12px;"></i> Copy
+        </button>
+      </div>
+      <div class="patch-status-msg" id="patch-status-${id}" style="margin-top:6px; font-size:10px; color:#10B981; display:none;"></div>
+    </div>
+  `;
+}
+
+function formatDiff(diff) {
+  if (!diff) return '';
+  return diff.split('\n').map(line => {
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      return `<span style="color:#4ADE80; background:rgba(74,222,128,0.1); display:block;">${line}</span>`;
+    }
+    if (line.startsWith('-') && !line.startsWith('---')) {
+      return `<span style="color:#F87171; background:rgba(248,113,113,0.1); display:block;">${line}</span>`;
+    }
+    return `<span>${line}</span>`;
   }).join('');
 }
 
@@ -184,16 +223,21 @@ function setupCopilotInteractivity() {
     if (window.lucide) lucide.createIcons();
 
     try {
-      // Execute Multi-Agent Workflow with Human-in-the-Loop Approval Handler
-      const workflowResult = await runCyberAgentWorkflow(text, conversationHistory, async (interruption) => {
-        // Return promise that resolves when human clicks Approve or Deny
-        return await showApprovalModal(interruption);
-      });
+      // Execute Multi-Agent Workflow with Human-in-the-Loop Approval Handler & Patch Proposer
+      const workflowResult = await runCyberAgentWorkflow(
+        text,
+        conversationHistory,
+        async (interruption) => {
+          return await showApprovalModal(interruption);
+        },
+        true // Enable onPatchPropose
+      );
 
       typingRow.remove();
 
       const aiMsg = document.createElement('div');
       aiMsg.className = 'message-row message-row--ai';
+      const msgIndex = conversationHistory.length;
       aiMsg.innerHTML = `
         <div class="message-avatar"><i data-lucide="${workflowResult.lastAgent?.icon || 'bot'}"></i></div>
         <div class="message-bubble message-bubble--ai">
@@ -201,14 +245,22 @@ function setupCopilotInteractivity() {
             <i data-lucide="cpu" style="width:11px;height:11px;"></i> Handoff: ${workflowResult.lastAgent?.name}
           </div>
           ${formatText(workflowResult.finalOutput)}
+          ${workflowResult.patchOperation ? renderPatchCardHtml(workflowResult.patchOperation, msgIndex) : ''}
         </div>
       `;
       chatArea.appendChild(aiMsg);
+
+      // Attach patch apply / copy handlers
+      if (workflowResult.patchOperation) {
+        setupPatchCardInteractions(aiMsg, workflowResult.patchOperation, msgIndex);
+      }
+
       conversationHistory.push({
         type: 'ai',
         text: workflowResult.finalOutput,
         agentName: workflowResult.lastAgent?.name,
         agentIcon: workflowResult.lastAgent?.icon,
+        patchOperation: workflowResult.patchOperation,
         time: 'Now',
       });
     } catch (err) {
@@ -310,4 +362,51 @@ function showApprovalModal(interruption) {
       resolve(false);
     });
   });
+}
+
+/**
+ * Handles interactions on the Security Hotpatch Card (Apply / Copy)
+ */
+function setupPatchCardInteractions(container, patch, id) {
+  const applyBtn = container.querySelector(`.patch-apply-btn[data-patch-id="${id}"]`);
+  const copyBtn = container.querySelector('.patch-copy-btn');
+  const statusMsg = container.querySelector(`#patch-status-${id}`);
+
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async () => {
+      applyBtn.disabled = true;
+      applyBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width:12px;height:12px;"></i> Applying...';
+      if (window.lucide) lucide.createIcons();
+
+      try {
+        const result = await applyPatchTool.execute(patch);
+        if (result.status === 'completed') {
+          applyBtn.style.background = '#059669';
+          applyBtn.innerHTML = '<i data-lucide="check-check" style="width:12px;height:12px;"></i> Patch Applied';
+          if (statusMsg) {
+            statusMsg.style.display = 'block';
+            statusMsg.innerText = `✅ [apply_patch_call_output: completed] ${result.output}`;
+          }
+          showToast(`Security patch applied to ${patch.path} ✅`, 'success', 2500);
+        } else {
+          applyBtn.disabled = false;
+          applyBtn.innerHTML = 'Retry Apply';
+          showToast(`Failed to apply patch: ${result.output}`, 'error', 2500);
+        }
+      } catch (e) {
+        applyBtn.disabled = false;
+        applyBtn.innerHTML = 'Error';
+        showToast(`Error: ${e.message}`, 'error', 2500);
+      }
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const diffText = decodeURIComponent(copyBtn.dataset.diff || '');
+      navigator.clipboard.writeText(diffText);
+      showToast('Patch diff copied to clipboard 📋', 'default', 1500);
+    });
+  }
 }

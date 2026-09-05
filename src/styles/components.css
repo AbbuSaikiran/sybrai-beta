@@ -1772,3 +1772,26 @@
   flex-shrink: 0;
 }
 
+/* ==========================================
+   CYBERSECURITY APPLY PATCH CARD
+   ========================================== */
+.cyber-patch-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.cyber-patch-card:hover {
+  border-color: rgba(56, 189, 248, 0.5) !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+

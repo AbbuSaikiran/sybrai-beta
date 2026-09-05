@@ -1,0 +1,259 @@
+/* ============================================
+   SYBRAI — Global Styles
+   Base styles, layout, utilities, animations
+   ============================================ */
+
+/* ---------- Base ---------- */
+body {
+  font-family: var(--font-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-lh);
+  color: var(--color-text-primary);
+  background-color: #E5E7EB;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: var(--space-base) 0;
+}
+
+/* ---------- App Shell (Mobile Viewport Simulation) ---------- */
+.app-shell {
+  position: relative;
+  width: 100%;
+  max-width: var(--app-max-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-xl);
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 0;
+    background-color: var(--color-bg);
+  }
+  .app-shell {
+    border-radius: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
+
+/* ---------- Status Bar ---------- */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-lg);
+  height: var(--status-bar-height);
+  background-color: var(--color-status-bar);
+  color: var(--color-status-bar-text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-body-bold-weight);
+  flex-shrink: 0;
+}
+
+.status-bar__time {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.status-bar__icons {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.status-bar__icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- Screen Container ---------- */
+.screen-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for cleaner mobile look */
+.screen-container::-webkit-scrollbar {
+  display: none;
+}
+.screen-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------- Screen base ---------- */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100%;
+  padding: var(--space-base);
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity var(--duration-normal) var(--easing-default),
+              transform var(--duration-normal) var(--easing-default);
+  pointer-events: none;
+}
+
+.screen.active {
+  position: relative;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ---------- Typography Utility Classes ---------- */
+.type-display {
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-lh);
+}
+
+.type-h1 {
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-lh);
+}
+
+.type-h2 {
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-lh);
+}
+
+.type-h3 {
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-lh);
+}
+
+.type-body {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-lh);
+}
+
+.type-body-bold {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-bold-weight);
+  line-height: var(--type-body-lh);
+}
+
+.type-caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-lh);
+}
+
+.type-overline {
+  font-size: var(--type-overline-size);
+  font-weight: var(--type-overline-weight);
+  line-height: var(--type-overline-lh);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.type-code {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-size);
+  font-weight: var(--type-code-weight);
+  line-height: var(--type-code-lh);
+}
+
+/* ---------- Color Utilities ---------- */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+.text-success { color: var(--color-accent-green); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-info { color: var(--color-info); }
+
+/* ---------- Accessibility Utilities ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only--focusable:focus {
+  position: fixed;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 10000;
+  width: auto;
+  height: auto;
+  padding: var(--space-sm) var(--space-base);
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+/* ---------- Focus Ring ---------- */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Flex / Grid Helpers ---------- */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-base { gap: var(--space-base); }
+.gap-lg { gap: var(--space-lg); }
+.flex-1 { flex: 1; }
+.w-full { width: 100%; }
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Theme Transition ---------- */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color var(--duration-normal) var(--easing-default),
+              color var(--duration-normal) var(--easing-default),
+              border-color var(--duration-normal) var(--easing-default),
+              box-shadow var(--duration-normal) var(--easing-default) !important;
+}

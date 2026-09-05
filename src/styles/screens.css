@@ -1,0 +1,192 @@
+/* ============================================
+   SYBRAI — Screen-Specific Styles
+   ============================================ */
+
+/* ==========================================
+   SPLASH SCREEN
+   ========================================== */
+.screen--splash {
+  background: var(--color-splash-gradient);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--status-bar-height));
+  padding: var(--space-xxl);
+  text-align: center;
+  gap: var(--space-lg);
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  animation: splashLogoIn var(--duration-slow) var(--easing-bounce) both;
+}
+
+.splash-logo__svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 24px rgba(255,255,255,0.3));
+}
+
+.splash-brand {
+  animation: splashFadeUp var(--duration-slow) var(--easing-default) 0.3s both;
+}
+
+.splash-brand__name {
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  color: white;
+  letter-spacing: 0.04em;
+}
+
+.splash-brand__sub {
+  font-size: var(--type-caption-size);
+  color: rgba(255,255,255,0.8);
+  margin-top: var(--space-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.splash-tagline {
+  font-size: var(--type-body-size);
+  color: rgba(255,255,255,0.7);
+  animation: splashFadeUp var(--duration-slow) var(--easing-default) 0.6s both;
+}
+
+.splash-progress {
+  width: 120px;
+  height: 3px;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: var(--space-lg);
+  animation: splashFadeUp var(--duration-slow) var(--easing-default) 0.8s both;
+}
+
+.splash-progress__bar {
+  height: 100%;
+  background: white;
+  border-radius: var(--radius-full);
+  animation: splashProgress 2s var(--easing-default) 1s both;
+}
+
+.splash-init {
+  font-size: var(--type-caption-size);
+  color: rgba(255,255,255,0.5);
+  animation: splashFadeUp var(--duration-slow) var(--easing-default) 1s both;
+}
+
+@keyframes splashLogoIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes splashFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* ==========================================
+   HOME (BUG FIXER) SCREEN
+   ========================================== */
+.screen--home {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  min-height: calc(100vh - var(--status-bar-height) - var(--bottom-bar-height));
+}
+
+.home-chat-area {
+  flex: 1;
+  padding: var(--space-base);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ==========================================
+   ANALYSIS SCREEN
+   ========================================== */
+.screen--analysis {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-content {
+  padding: var(--space-base);
+  flex: 1;
+}
+
+/* ==========================================
+   RECORDS SCREEN
+   ========================================== */
+.screen--records {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.records-content {
+  padding: var(--space-base);
+  flex: 1;
+}
+
+/* ==========================================
+   COPILOT SCREEN
+   ========================================== */
+.screen--copilot {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  min-height: calc(100vh - var(--status-bar-height) - var(--bottom-bar-height));
+}
+
+.copilot-chat-area {
+  flex: 1;
+  padding: var(--space-base);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ==========================================
+   PROFILE SCREEN
+   ========================================== */
+.screen--profile {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-content {
+  padding: 0 var(--space-base) var(--space-lg);
+}
+
+/* ==========================================
+   NOTIFICATIONS SCREEN
+   ========================================== */
+.screen--notifications {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notifications-content {
+  flex: 1;
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-base);
+}

@@ -282,6 +282,9 @@ export function renderCopilot() {
       ${renderChatThread()}
     </div>
 
+    <!-- Bottom Clearance Spacer (guarantees messages & chips never collide with input bar) -->
+    <div class="copilot-bottom-spacer" style="height: 140px; width: 100%; pointer-events: none;" aria-hidden="true"></div>
+
     <!-- Bottom Fixed Input Bar (Clean, User-Friendly like ChatGPT & Sybrai) -->
     <div class="copilot-input-container">
       <div class="copilot-input-bar">
@@ -790,14 +793,31 @@ function setupCopilotInteractions(screen) {
     renderAndUpdateThread();
   };
 
+  const scrollToBottom = (smooth = true) => {
+    const screenContainer = screen.closest('.screen-container') || document.querySelector('.screen-container');
+    if (screenContainer) {
+      screenContainer.scrollTo({
+        top: screenContainer.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    }
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  };
+
   const renderAndUpdateThread = () => {
     if (thread) {
       thread.innerHTML = renderChatThread();
       if (window.lucide) lucide.createIcons();
       attachMessageEvents(screen);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      setTimeout(() => scrollToBottom(true), 60);
     }
   };
+
+  // Initial scroll to bottom on mount
+  setTimeout(() => scrollToBottom(false), 120);
 
   sendBtn?.addEventListener('click', () => handleSend());
   inputEl?.addEventListener('keydown', (e) => {

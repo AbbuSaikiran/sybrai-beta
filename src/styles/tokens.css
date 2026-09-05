@@ -32,6 +32,7 @@
 
   /* Backgrounds — Light default */
   --color-bg: #F8FAFC;
+  --color-background: #F8FAFC;
   --color-bg-elevated: #FFFFFF;
   --color-surface: #FFFFFF;
   --color-surface-hover: #F1F5F9;
@@ -143,6 +144,7 @@
 /* ---------- Dark Theme ---------- */
 [data-theme="dark"] {
   --color-bg: #0F172A;
+  --color-background: #0F172A;
   --color-bg-elevated: #1E293B;
   --color-surface: #1E293B;
   --color-surface-hover: #334155;

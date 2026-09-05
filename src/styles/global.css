@@ -43,6 +43,9 @@ body {
     min-height: 100vh;
     min-height: 100dvh;
   }
+  .status-bar {
+    display: none !important;
+  }
 }
 
 /* Standalone / PWA installed mode on mobile */

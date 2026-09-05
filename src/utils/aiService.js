@@ -132,8 +132,8 @@ async function callOpenAi(config, prompt, history = []) {
 
       if (response.ok) {
         const result = await response.json();
-        if (result.output_text) return result.output_text;
-        if (result.output && typeof result.output === 'string') return result.output;
+        const extracted = extractResponseText(result);
+        if (extracted) return extracted;
       }
     } catch (e) {
       console.warn('[OpenAI Responses API] Fallback to chat completions:', e);
@@ -151,18 +151,28 @@ async function callOpenAi(config, prompt, history = []) {
     { role: 'user', content: prompt },
   ];
 
+  const isReasoningModel = model.includes('luna') || model.startsWith('gpt-5') || model.startsWith('o1') || model.startsWith('o3');
+
+  const requestBody = {
+    model,
+    messages,
+  };
+
+  if (isReasoningModel) {
+    // Reasoning models (gpt-5.6-luna, o1, o3) require max_completion_tokens and do not allow custom temperature
+    requestBody.max_completion_tokens = 1200;
+  } else {
+    requestBody.max_tokens = 800;
+    requestBody.temperature = 0.7;
+  }
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 800,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -172,6 +182,20 @@ async function callOpenAi(config, prompt, history = []) {
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || 'No response generated.';
+}
+
+function extractResponseText(result) {
+  if (result.output_text) return result.output_text;
+  if (Array.isArray(result.output)) {
+    for (const item of result.output) {
+      if (item.type === 'message' && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          if (part.text) return part.text;
+        }
+      }
+    }
+  }
+  return null;
 }
 
 /**

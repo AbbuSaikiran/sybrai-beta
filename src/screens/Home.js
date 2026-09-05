@@ -12,10 +12,8 @@ export function renderHome() {
   screen.innerHTML = `
     <div class="top-app-bar">
       <div class="top-app-bar__leading">
-        <button class="top-app-bar__icon-btn" aria-label="Menu">
-          <i data-lucide="menu"></i>
-        </button>
-        <h1 class="top-app-bar__title">Bug Fixer</h1>
+        <img src="/logo.png" alt="SYBRAI" class="top-app-bar__logo" />
+        <h1 class="top-app-bar__title">SYBRAI</h1>
       </div>
       <div class="top-app-bar__trailing">
         <button class="top-app-bar__icon-btn" aria-label="Notifications" onclick="window.location.hash='/notifications'">

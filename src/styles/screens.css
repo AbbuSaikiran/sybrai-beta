@@ -23,10 +23,12 @@
   animation: splashLogoIn var(--duration-slow) var(--easing-bounce) both;
 }
 
-.splash-logo__svg {
+.splash-logo__svg,
+.splash-logo__img {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 24px rgba(255,255,255,0.3));
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(255,255,255,0.4));
 }
 
 .splash-brand {

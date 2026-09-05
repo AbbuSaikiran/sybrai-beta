@@ -78,8 +78,13 @@ export function renderProfile() {
         </div>
       </div>
 
-      <div style="padding: var(--space-lg) 0;">
+      <div style="padding: var(--space-lg) 0 var(--space-sm);">
         <button class="btn btn--destructive btn--full" id="logout-btn">Logout</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); padding: var(--space-sm) 0 var(--space-xl); opacity: 0.75;">
+        <img src="/logo.png" alt="SYBRAI" style="width: 28px; height: 28px; object-fit: contain;" />
+        <span style="font-size: var(--type-caption-size); color: var(--color-text-tertiary);">SYBRAI v1.0.0</span>
       </div>
     </div>
   `;

@@ -9,6 +9,7 @@ import { showToast } from '../utils/toast.js';
 import { getAiConfig } from '../utils/aiService.js';
 import { runCyberAgentWorkflow, applyPatchTool } from '../utils/cyberAgentsSdk.js';
 import { startLiveTranscription, stopLiveTranscription, isCurrentlyTranscribing, speakText, stopSpeech, isSpeaking } from '../utils/audioService.js';
+import { showMobileInstallModal } from '../utils/mobileModal.js';
 
 let conversationHistory = [
   {
@@ -39,7 +40,10 @@ export function renderCopilot() {
         </div>
       </div>
       <div class="top-app-bar__trailing" style="display:flex; gap:4px;">
-        <button class="top-app-bar__icon-btn" id="copilot-voice-mode" title="Open Realtime Voice Agent (gpt-realtime-2.1)" aria-label="Open Realtime Voice Agent" style="color:var(--color-primary);">
+        <button class="top-app-bar__icon-btn" id="copilot-mobile-qr" title="Open on Mobile (Scan QR)" aria-label="Open on Mobile" style="color:var(--color-primary);">
+          <i data-lucide="smartphone"></i>
+        </button>
+        <button class="top-app-bar__icon-btn" id="copilot-voice-mode" title="Open Realtime Voice Agent (gpt-realtime-2.1)" aria-label="Open Realtime Voice Agent" style="color:#06B6D4;">
           <i data-lucide="mic"></i>
         </button>
         <button class="top-app-bar__icon-btn" id="copilot-clear" title="Clear chat" aria-label="Clear chat">
@@ -331,6 +335,14 @@ function setupCopilotInteractivity() {
   if (voiceModeBtn) {
     voiceModeBtn.addEventListener('click', () => {
       showRealtimeVoiceAgentModal(sendMessage);
+    });
+  }
+
+  // 3. Mobile Install QR Code Modal
+  const mobileQrBtn = document.getElementById('copilot-mobile-qr');
+  if (mobileQrBtn) {
+    mobileQrBtn.addEventListener('click', () => {
+      showMobileInstallModal();
     });
   }
 

@@ -4,6 +4,7 @@
 
 import { chatConversation } from '../data/mockData.js';
 import { showToast } from '../utils/toast.js';
+import { showMobileInstallModal } from '../utils/mobileModal.js';
 
 export function renderHome() {
   const screen = document.createElement('div');
@@ -15,7 +16,10 @@ export function renderHome() {
         <img src="/logo.png" alt="SYBRAI" class="top-app-bar__logo" />
         <h1 class="top-app-bar__title">SYBRAI</h1>
       </div>
-      <div class="top-app-bar__trailing">
+      <div class="top-app-bar__trailing" style="display:flex; gap:4px;">
+        <button class="top-app-bar__icon-btn" id="home-mobile-qr" title="Install Mobile App (Scan QR Code)" aria-label="Install Mobile App" style="color:var(--color-primary);">
+          <i data-lucide="smartphone"></i>
+        </button>
         <button class="top-app-bar__icon-btn" aria-label="Notifications" onclick="window.location.hash='/notifications'">
           <i data-lucide="bell"></i>
           <span class="notification-dot"></span>
@@ -188,6 +192,14 @@ function setupHomeInteractivity() {
     micActive = !micActive;
     micBtn.classList.toggle('active', micActive);
   });
+
+  // Mobile App QR Code
+  const mobileQrBtn = document.getElementById('home-mobile-qr');
+  if (mobileQrBtn) {
+    mobileQrBtn.addEventListener('click', () => {
+      showMobileInstallModal();
+    });
+  }
 
   setupActionChips();
 }

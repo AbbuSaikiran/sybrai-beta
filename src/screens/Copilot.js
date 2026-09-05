@@ -8,6 +8,7 @@
 import { showToast } from '../utils/toast.js';
 import { getAiConfig } from '../utils/aiService.js';
 import { runCyberAgentWorkflow, applyPatchTool } from '../utils/cyberAgentsSdk.js';
+import { startLiveTranscription, stopLiveTranscription, isCurrentlyTranscribing, speakText, stopSpeech, isSpeaking } from '../utils/audioService.js';
 
 let conversationHistory = [
   {
@@ -37,7 +38,10 @@ export function renderCopilot() {
           </div>
         </div>
       </div>
-      <div class="top-app-bar__trailing">
+      <div class="top-app-bar__trailing" style="display:flex; gap:4px;">
+        <button class="top-app-bar__icon-btn" id="copilot-voice-mode" title="Open Realtime Voice Agent (gpt-realtime-2.1)" aria-label="Open Realtime Voice Agent" style="color:var(--color-primary);">
+          <i data-lucide="mic"></i>
+        </button>
         <button class="top-app-bar__icon-btn" id="copilot-clear" title="Clear chat" aria-label="Clear chat">
           <i data-lucide="rotate-ccw"></i>
         </button>
@@ -48,7 +52,7 @@ export function renderCopilot() {
     <div style="display:flex; align-items:center; justify-content:space-between; padding: 6px 16px; background: rgba(37,99,235,0.06); border-bottom: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary); flex-wrap: wrap; gap: 4px;">
       <div style="display:flex; align-items:center; gap: 6px;">
         <span style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display:inline-block;"></span>
-        <span>Tools: <code style="font-size:10px; color:var(--color-primary);">apply_patch</code> | <code style="font-size:10px; color:#10B981;">web_search</code> | <code style="font-size:10px; color:#F59E0B;">mcp</code> | <code style="font-size:10px; color:#8B5CF6;">async</code></span>
+        <span>Tools: <code style="font-size:10px; color:var(--color-primary);">apply_patch</code> | <code style="font-size:10px; color:#10B981;">web_search</code> | <code style="font-size:10px; color:#F59E0B;">mcp</code> | <code style="font-size:10px; color:#06B6D4;">realtime_audio</code></span>
       </div>
       <span class="badge badge--secure" style="font-size: 9px;">Guardrails ON</span>
     </div>
@@ -59,6 +63,10 @@ export function renderCopilot() {
 
     <!-- CyberSec Quick-Action Pills -->
     <div class="cyber-pill-bar">
+      <button class="cyber-pill" data-prompt="Voice briefing: Summarize high-priority security vulnerabilities and recommended patches">
+        <i data-lucide="volume-2" style="width:12px;height:12px;color:#06B6D4;"></i>
+        <span>Audio Threat Briefing</span>
+      </button>
       <button class="cyber-pill" data-prompt="Propose and apply patch for SQL injection in src/controllers/auth.js">
         <i data-lucide="git-pull-request" style="width:12px;height:12px;color:#10B981;"></i>
         <span>apply_patch (SQLi)</span>
@@ -75,14 +83,13 @@ export function renderCopilot() {
         <i data-lucide="timer" style="width:12px;height:12px;color:#8B5CF6;"></i>
         <span>Async SAST Scan</span>
       </button>
-      <button class="cyber-pill" data-prompt="Trigger a critical security alert push notification to my mobile device">
-        <i data-lucide="bell" style="width:12px;height:12px;color:#EF4444;"></i>
-        <span>Mobile Push Alert</span>
-      </button>
     </div>
 
     <div class="chat-input-bar">
-      <input class="chat-input-bar__field" id="copilot-input" type="text" placeholder="Ask CyberSec AI (e.g. Apply patch for SQLi)..." aria-label="Ask CyberSec AI" />
+      <button class="chat-input-bar__btn" id="copilot-mic-btn" title="Hold or click to speak" aria-label="Voice input" style="margin-right:6px;">
+        <i data-lucide="mic"></i>
+      </button>
+      <input class="chat-input-bar__field" id="copilot-input" type="text" placeholder="Ask or speak to CyberSec AI..." aria-label="Ask CyberSec AI" />
       <button class="chat-input-bar__btn chat-input-bar__btn--send" id="copilot-send" aria-label="Send message">
         <i data-lucide="arrow-up"></i>
       </button>
@@ -102,11 +109,17 @@ function renderCopilotMessages(messages) {
             <i data-lucide="${msg.agentIcon || 'bot'}"></i>
           </div>
           <div class="message-bubble message-bubble--ai">
-            ${msg.agentName ? `
-              <div style="display:flex; align-items:center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--color-primary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em;">
-                <i data-lucide="cpu" style="width:11px;height:11px;"></i> Handoff: ${msg.agentName}
-              </div>
-            ` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+              ${msg.agentName ? `
+                <div style="display:flex; align-items:center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                  <i data-lucide="cpu" style="width:11px;height:11px;"></i> Handoff: ${msg.agentName}
+                </div>
+              ` : '<div></div>'}
+              <button class="btn-voice-readout" data-text="${encodeURIComponent(msg.text)}" title="Listen to spoken audio (TTS)" style="background:none; border:none; color:var(--color-text-tertiary); cursor:pointer; padding:2px 4px; display:inline-flex; align-items:center; gap:3px; font-size:10px; border-radius:4px;">
+                <i data-lucide="volume-2" style="width:12px;height:12px;"></i>
+                <span>Listen</span>
+              </button>
+            </div>
             ${formatText(msg.text)}
             ${msg.patchOperation ? renderPatchCardHtml(msg.patchOperation, idx) : ''}
           </div>
@@ -281,6 +294,68 @@ function setupCopilotInteractivity() {
   sendBtn.addEventListener('click', () => sendMessage());
   input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
+  // 1. Microphone / Speech-to-Text Button (gpt-live-transcribe / Web Speech)
+  const micBtn = document.getElementById('copilot-mic-btn');
+  if (micBtn) {
+    micBtn.addEventListener('click', () => {
+      if (isCurrentlyTranscribing()) {
+        stopLiveTranscription();
+        micBtn.classList.remove('voice-mic-active');
+        showToast('Microphone muted', 'default', 1500);
+      } else {
+        micBtn.classList.add('voice-mic-active');
+        showToast('Listening... Speak your security inquiry 🎙️', 'default', 2000);
+        startLiveTranscription({
+          onDelta: (delta) => {
+            input.value = delta;
+            sendBtn.classList.add('enabled');
+          },
+          onComplete: (finalText) => {
+            input.value = finalText;
+            micBtn.classList.remove('voice-mic-active');
+            stopLiveTranscription();
+            sendMessage(finalText);
+          },
+          onError: (err) => {
+            micBtn.classList.remove('voice-mic-active');
+            stopLiveTranscription();
+            showToast(`Voice error: ${err.message || err}`, 'warning', 2500);
+          }
+        });
+      }
+    });
+  }
+
+  // 2. Realtime Voice Agent HUD Modal (gpt-realtime-2.1)
+  const voiceModeBtn = document.getElementById('copilot-voice-mode');
+  if (voiceModeBtn) {
+    voiceModeBtn.addEventListener('click', () => {
+      showRealtimeVoiceAgentModal(sendMessage);
+    });
+  }
+
+  // 3. Audio Readout (TTS) for AI Messages
+  chatArea.addEventListener('click', (e) => {
+    const readoutBtn = e.target.closest('.btn-voice-readout');
+    if (readoutBtn) {
+      const rawText = decodeURIComponent(readoutBtn.dataset.text || '');
+      if (isSpeaking()) {
+        stopSpeech();
+        readoutBtn.querySelector('span').innerText = 'Listen';
+        readoutBtn.style.color = '';
+      } else {
+        readoutBtn.querySelector('span').innerText = 'Playing...';
+        readoutBtn.style.color = 'var(--color-primary)';
+        speakText(rawText, {
+          onEnd: () => {
+            readoutBtn.querySelector('span').innerText = 'Listen';
+            readoutBtn.style.color = '';
+          }
+        });
+      }
+    }
+  });
+
   // Quick Action Pills
   document.querySelectorAll('.cyber-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -410,3 +485,118 @@ function setupPatchCardInteractions(container, patch, id) {
     });
   }
 }
+
+/**
+ * Realtime Voice Agent HUD Modal
+ * Implements the OpenAI Realtime Voice Agent (gpt-realtime-2.1) architecture
+ */
+function showRealtimeVoiceAgentModal(onSendMessage) {
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) return;
+
+  let currentVoiceText = '';
+
+  modalContainer.innerHTML = `
+    <div class="modal-backdrop active" id="voice-agent-backdrop">
+      <div class="modal-sheet" role="dialog" aria-labelledby="voice-agent-title" style="max-height:85vh; text-align:center;">
+        <div class="modal-sheet__handle"></div>
+        <div class="modal-sheet__header" style="justify-content:center; flex-direction:column; gap:2px;">
+          <h2 class="modal-sheet__title" id="voice-agent-title" style="color:var(--color-primary); font-size:16px;">
+            <i data-lucide="mic"></i> Realtime Voice Agent
+          </h2>
+          <div style="font-size:10px; color:var(--color-text-tertiary); font-family:var(--font-mono);">
+            gpt-realtime-2.1 • Semantic VAD • 24kHz WebRTC
+          </div>
+        </div>
+
+        <div class="modal-sheet__body" style="padding:16px 20px;">
+          <!-- Glowing Animated Cyber-Orb -->
+          <div class="voice-orb listening" id="voice-hud-orb">
+            <i data-lucide="radio" style="width:36px;height:36px;"></i>
+          </div>
+
+          <!-- Live Soundwave Animation -->
+          <div class="voice-soundwave">
+            <div class="soundwave-bar"></div>
+            <div class="soundwave-bar"></div>
+            <div class="soundwave-bar"></div>
+            <div class="soundwave-bar"></div>
+            <div class="soundwave-bar"></div>
+          </div>
+
+          <div id="voice-hud-status" style="font-size:12px; font-weight:600; color:#10B981; margin:6px 0;">
+            Listening... Speak your command
+          </div>
+
+          <!-- Streaming Transcript Box -->
+          <div id="voice-hud-transcript" style="min-height:50px; background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:10px; font-size:12px; font-family:var(--font-mono); color:var(--color-text-primary); text-align:left; max-height:100px; overflow-y:auto; margin:10px 0;">
+            <span style="color:var(--color-text-tertiary); font-style:italic;">Live speech transcript will appear here...</span>
+          </div>
+
+          <div style="font-size:11px; color:var(--color-text-secondary); line-height:1.4;">
+            💡 <em>Say: "Audit auth.js for SQL injection" or "Run background SAST scan"</em>
+          </div>
+        </div>
+
+        <div class="modal-sheet__footer" style="display:flex; gap:8px;">
+          <button class="btn btn--secondary" id="voice-cancel-btn" style="flex:1;">
+            Exit Voice
+          </button>
+          <button class="btn btn--primary" id="voice-commit-btn" style="flex:1; background:var(--color-primary);">
+            Finish Turn
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (window.lucide) lucide.createIcons();
+
+  const transcriptBox = modalContainer.querySelector('#voice-hud-transcript');
+  const statusEl = modalContainer.querySelector('#voice-hud-status');
+  const orbEl = modalContainer.querySelector('#voice-hud-orb');
+  const commitBtn = modalContainer.querySelector('#voice-commit-btn');
+  const cancelBtn = modalContainer.querySelector('#voice-cancel-btn');
+
+  const cleanup = () => {
+    stopLiveTranscription();
+    modalContainer.innerHTML = '';
+  };
+
+  // Start live speech transcription
+  startLiveTranscription({
+    onDelta: (delta) => {
+      currentVoiceText = delta;
+      transcriptBox.innerText = delta;
+      statusEl.innerText = 'Transcribing speech...';
+      statusEl.style.color = '#38BDF8';
+    },
+    onComplete: (finalText) => {
+      currentVoiceText = finalText;
+      transcriptBox.innerText = finalText;
+      statusEl.innerText = 'Speech recognized ✅';
+      statusEl.style.color = '#10B981';
+    },
+    onError: (err) => {
+      statusEl.innerText = `Voice Error: ${err.message || err}`;
+      statusEl.style.color = '#EF4444';
+    }
+  });
+
+  commitBtn?.addEventListener('click', () => {
+    const textToSubmit = currentVoiceText.trim();
+    cleanup();
+    if (textToSubmit) {
+      onSendMessage(textToSubmit);
+      showToast('Voice command sent to Copilot 🚀', 'success', 2000);
+    } else {
+      showToast('No speech detected', 'warning', 1500);
+    }
+  });
+
+  cancelBtn?.addEventListener('click', () => {
+    cleanup();
+    showToast('Voice session closed', 'default', 1500);
+  });
+}
+
